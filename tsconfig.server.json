@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.common.json",
+  "outDir": "./nodeout",
+  "include": ["src"],
+  "exclude": ["src/client"]
+}
