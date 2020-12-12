@@ -1,10 +1,12 @@
 import { debounce } from 'throttle-debounce';
 import { getAsset } from './assets';
-import { State, Player } from '../shared/types';
+import { State, Player, Bomb } from '../shared/types';
 
 import {
   PLAYER_RADIUS,
   MAP_SIZE,
+  BOMB_RADIUS,
+  BOMB_EXPLOSION_RADIUS,
 } from '../shared/constants';
 
 const canvas = document.getElementById('game-canvas')! as HTMLCanvasElement;
@@ -23,7 +25,7 @@ export function renderGame(state?: State) {
   if (!state) {
     return;
   }
-  const { me } = state;
+  const { me, others, bombs } = state;
 
   // Draw background
   renderBackground(me.x, me.y);
@@ -33,8 +35,16 @@ export function renderGame(state?: State) {
   context.lineWidth = 1;
   context.strokeRect(canvas.width / 2 - me.x, canvas.height / 2 - me.y, MAP_SIZE, MAP_SIZE);
 
+  // Draw bombs
+  for (const b of bombs) {
+    renderBomb(me, b);
+  }
+
   // Draw all players
   renderPlayer(me, me);
+  for (const other of others) {
+    renderPlayer(me, other);
+  }
 }
 
 function renderBackground(x: number, y: number) {
@@ -79,6 +89,18 @@ function renderPlayer(me: Player, player: Player) {
     canvasY + PLAYER_RADIUS + 8,
     PLAYER_RADIUS * 2,
     2,
+  );
+}
+
+function renderBomb(me: Player, bomb: Bomb) {
+  const { x, y } = bomb;
+  const radius = (bomb.exploded) ? BOMB_EXPLOSION_RADIUS : BOMB_RADIUS;
+  context.drawImage(
+    getAsset('bullet.svg'),
+    canvas.width / 2 + x - me.x - radius,
+    canvas.height / 2 + y - me.y - radius,
+    radius * 2,
+    radius * 2,
   );
 }
 

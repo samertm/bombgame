@@ -39,6 +39,7 @@ io.on('connection', (socket: Socket) => {
     game.handleInput(socket, input);
   });
   socket.on('disconnect', () => {
-    console.log("remove player", socket.id);
+    console.log("Removing player", socket.id);
+    game.removePlayer(socket);
   });
 });

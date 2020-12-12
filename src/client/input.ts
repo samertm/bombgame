@@ -1,4 +1,4 @@
-import { MoveField, SequencedMove } from '../shared/types';
+import { MoveField, SequencedMove, Move } from '../shared/types';
 
 const smove: SequencedMove = {
   sequence: 0,
@@ -7,15 +7,21 @@ const smove: SequencedMove = {
     right: false,
     up: false,
     down: false,
+    bomb: false,
   }
 }
 
-const keyCodeToDirection = Object.freeze<{[keycode: number]: MoveField}>({
+const keyCodeToMoveField = Object.freeze<{[keycode: number]: MoveField}>({
+  32: 'bomb', // spacebar
   37: 'left',
   38: 'up',
   39: 'right',
   40: 'down',
 });
+
+function isMoveZero(move: Move): boolean {
+  return !move.left && !move.right && !move.up && !move.down && !move.bomb;
+}
 
 let moveBuffer: SequencedMove[] = []
 
@@ -29,35 +35,38 @@ function copySequencedMove(sm: SequencedMove): SequencedMove {
       right: sm.move.right,
       up: sm.move.up,
       down: sm.move.down,
+      bomb: sm.move.bomb,
     },
   }
 }
 
-let lastMove: SequencedMove | undefined;
+let lastSequencedMove: SequencedMove | undefined;
 
 function keyHandler(event: KeyboardEvent, enable: boolean) {
-  const arrow = keyCodeToDirection[event.keyCode];
-  if (!arrow) {
+  const moveField = keyCodeToMoveField[event.keyCode];
+  if (!moveField) {
     return;
   }
-  const changed = smove.move[arrow] !== enable;
-  smove.move[arrow] = enable;
+  const changed = smove.move[moveField] !== enable;
+  smove.move[moveField] = enable;
   if (changed) {
     const copiedMove = copySequencedMove(smove);
     copiedMove.sequence = sequence;
     sequence++;
-    lastMove = copiedMove;
+    lastSequencedMove = copiedMove;
     moveBuffer.push(copiedMove);
   }
 }
 
 export function getAndWipeMoveBuffer() {
-  if (moveBuffer.length === 0 && lastMove) {
-    // Use the last move instead if the buffer is empty.
-    const copiedMove = copySequencedMove(lastMove);
+  if (moveBuffer.length === 0 && lastSequencedMove && !isMoveZero(lastSequencedMove.move)) {
+    // Use the last move if it's non-zero and the buffer is empty.
+    // This is needed for the client-side prediction of the player
+    // movement to work.
+    const copiedMove = copySequencedMove(lastSequencedMove);
     copiedMove.sequence = sequence;
     sequence++;
-    lastMove = copiedMove;
+    lastSequencedMove = copiedMove;
     return [copiedMove];
   }
 

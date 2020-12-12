@@ -1,5 +1,7 @@
 import { SequencedMove, SequencedPlayer } from '../shared/types';
+import { BOMB_FUSE_TIME_MS } from '../shared/constants';
 import { movePlayer } from '../shared/player';
+import ServerBomb from './ServerBomb';
 
 export default class ServerPlayer {
   id: string;
@@ -8,13 +10,25 @@ export default class ServerPlayer {
   y: number;
   seqmoves: SequencedMove[];
   lastMove?: SequencedMove;
+  alive: boolean;
+
+  bombCooldownMs: number;
+  nextBombAvailable: number;
 
   constructor(id: string, username: string, x: number, y: number) {
     this.id = id;
     this.username = username;
     this.x = x;
     this.y = y;
-    this.seqmoves = []
+    this.seqmoves = [];
+    this.alive = true;
+
+    this.bombCooldownMs = 1000;
+    this.nextBombAvailable = 0;
+  }
+
+  takeBombExplosion() {
+    this.alive = false;
   }
 
   addSequencedMoves(seqmoves: SequencedMove[]) {
@@ -23,22 +37,37 @@ export default class ServerPlayer {
     }
   }
 
-  update(dt: number) {
+  update(dt: number, now: number): ServerBomb[] {
+    if (!this.alive) {
+      return[];
+    }
+
     let seqmoves = this.seqmoves;
     if (seqmoves.length === 0) {
       // Use the last move if the user didn't give us a move in the
       // meantime.
       if (!this.lastMove) {
-        return;
+        return [];
       }
       seqmoves = [this.lastMove];
     }
 
+    let triggeredBomb = false;
+
     for (const sm of seqmoves) {
-      movePlayer(this, dt, sm.move);
+      if (sm.move.bomb) {
+        triggeredBomb = true;
+      }
+      movePlayer(this, dt/seqmoves.length, sm.move);
       this.lastMove = sm;
     }
     this.seqmoves = [];
+
+    if (triggeredBomb && now >= this.nextBombAvailable) {
+      this.nextBombAvailable = now + this.bombCooldownMs;
+      return [new ServerBomb(this.x, this.y, now + BOMB_FUSE_TIME_MS)];
+    }
+    return [];
   }
 
   serialize(): SequencedPlayer {

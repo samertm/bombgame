@@ -3,12 +3,14 @@ export interface Move {
   right: boolean;
   up: boolean;
   down: boolean;
+  bomb: boolean;
 }
 
 export type MoveField = 'left' |
   'right' |
   'up' |
-  'down';
+  'down' |
+  'bomb';
 
 export interface SequencedMove {
   sequence: number;
@@ -17,6 +19,18 @@ export interface SequencedMove {
 
 export interface SequencedDtMove extends SequencedMove {
   dt: number;
+}
+
+export interface Coords {
+  x: number;
+  y: number;
+}
+
+export interface Bomb {
+  id: string;
+  x: number;
+  y: number;
+  exploded: boolean;
 }
 
 export interface Player {
@@ -31,6 +45,8 @@ export interface SequencedPlayer extends Player {
 
 export interface State {
   me: SequencedPlayer;
+  others: Player[];
+  bombs: Bomb[];
 }
 
 export interface Update extends State {

@@ -1,15 +1,15 @@
-import { Update, State, SequencedDtMove, SequencedMove } from '../shared/types';
+import { Update, State, SequencedDtMove, SequencedMove, Coords, Player, Bomb } from '../shared/types';
 import { movePlayer } from '../shared/player';
 
 
-// const RENDER_DELAY = 5;
+const RENDER_DELAY_MS = 100;
 
 const gameUpdates: Update[] = [];
-// let gameStart = 0;
+let gameStart = 0;
 let firstServerTimestamp = 0;
 
 export function initState() {
-  // gameStart = 0;
+  gameStart = 0;
   firstServerTimestamp = 0;
 }
 
@@ -25,41 +25,34 @@ export function processLocalMoves(dt: number, smoves: SequencedMove[]) {
         right: sm.move.right,
         up: sm.move.up,
         down: sm.move.down,
+        bomb: sm.move.bomb,
       },
     });
   }
 }
 
-let latestServerUpdate: Update | undefined;
-
-const TEST = false;
-
-export function processGameUpdates(updates: Update[]) {
+export function processGameUpdates(updates: Update[], ts: number) {
   if (updates.length === 0) {
     return;
   }
-
-  // Only keep latest server update for now.
-  if (TEST) {
-    if (latestServerUpdate) {
-      return;
-    }
+  if (!firstServerTimestamp) {
+    firstServerTimestamp = updates[updates.length - 1].t;
+    gameStart = ts;
   }
-  latestServerUpdate = updates[updates.length - 1];
+
+  for (const update of updates) {
+    gameUpdates.push(update);
+  }
 }
 
-const CHOPPY = false;
-
 export function getState(now: number): State | undefined {
-  if (!latestServerUpdate) {
+  if (gameUpdates.length === 0) {
     return;
   }
 
-  // Update the player location.
-  if (CHOPPY) {
-    return latestServerUpdate;
-  }
+  const latestServerUpdate = gameUpdates[gameUpdates.length - 1];
 
+  // Update the player location.
   // Copy the latest server update so we can modify the player.
   const player = {
     sequence: latestServerUpdate.me.sequence,
@@ -86,79 +79,96 @@ export function getState(now: number): State | undefined {
     localMoves.splice(0, mostUpToDateLocalMoveIndex+1);
   }
 
+  // Get the other entities RENDER_DELAY_MS in the past.
+  const delayedUpdateTime = firstServerTimestamp + (now - gameStart) - RENDER_DELAY_MS;
+  let delayedIdx = -1;
+  for (let i = gameUpdates.length-1; i >= 0; i--) {
+    if (gameUpdates[i].t <= delayedUpdateTime) {
+      delayedIdx = i;
+      break;
+    }
+  }
+  if (delayedIdx !== -1) {
+    // Remove all older updates, leaving at least one.
+    gameUpdates.splice(0, delayedIdx);
+  }
+
+  if (gameUpdates.length === 1) {
+    // Only one server update, so we can't interpolate.
+    return {
+      me: player,
+      others: gameUpdates[0].others,
+      bombs: gameUpdates[0].bombs,
+    };
+  }
+  // More than one update, interpolate between them.
+  const baseUpdate = gameUpdates[0];
+  const nextUpdate = gameUpdates[1];
+  const ratio = (delayedUpdateTime - baseUpdate.t) / (nextUpdate.t - baseUpdate.t);
+
   return {
     me: player,
+    others: interpolatePlayers(baseUpdate.others, nextUpdate.others, ratio),
+    bombs: interpolateBombs(baseUpdate.bombs, nextUpdate.bombs, ratio),
   }
 }
 
-// export function processGameUpdates(updates: Update[]) {
-//   if (!firstServerTimestamp) {
-//     firstServerTimestamp = update.t;
-//     gameStart = Date.now();
-//   }
-//   gameUpdates.push(update);
+function interpolatePlayers(basePlayers: Player[], nextPlayers: Player[], ratio: number): Player[] {
+  let interpolated = [];
 
-//   // Keep only one game update before the current server time.
-//   const base = getBaseUpdate();
-//   if (base > 0) {
-//     gameUpdates.splice(0, base);
-//   }
-// }
-
-// function currentServerTime() {
-//   return firstServerTimestamp + (Date.now() - gameStart) - RENDER_DELAY;
-// }
-
-// // Returns the index of the base update, the first game update before
-// // current server time, or -1 if n/a.
-// function getBaseUpdate() {
-//   const serverTime = currentServerTime();
-//   for (let i = gameUpdates.length - 1; i >= 0; i--) {
-//     if (gameUpdates[i].t <= serverTime) {
-//       return i;
-//     }
-//   }
-//   return -1;
-// }
-
-// Returns { me, others, bullets }
-export function getCurrentState(): State | undefined {
-  if (!firstServerTimestamp) {
-    return;
+  const npMap: {[id: string]: Player} = {};
+  for (const np of nextPlayers) {
+    npMap[np.id] = np;
   }
-
-  //const base = getBaseUpdate();
-  //const serverTime = currentServerTime();
-
-  return gameUpdates[gameUpdates.length - 1];
-  // If base is the most recent update we have, use its state.
-  // Else, interpolate between its state and the state of (base + 1).
-  // if (base < 0 || base === gameUpdates.length - 1) {
-  //   return gameUpdates[gameUpdates.length - 1];
-  // } else {
-  //   const baseUpdate = gameUpdates[base];
-  //   const next = gameUpdates[base + 1];
-  //   const ratio = (serverTime - baseUpdate.t) / (next.t - baseUpdate.t);
-  //   return {
-  //     me: interpolateObject(baseUpdate.me, next.me, ratio),
-  //   }
-  // }
+  for (const bp of basePlayers) {
+    interpolated.push(interpolatePlayer(bp, npMap[bp.id], ratio));
+  }
+  return interpolated;
 }
 
-// function interpolateObject(object1: Player, object2: Player, ratio: number): Player {
-//   if (!object2) {
-//     return object1;
-//   }
+function interpolatePlayer(basePlayer: Player, nextPlayer: Player | undefined, ratio: number): Player {
+  if (!nextPlayer) {
+    return basePlayer;
+  }
 
-//   const interpolated: Player = {id: '', x: 0, y: 0};
-//   for (let key in object1) {
-//     if (key === 'x') {
-//       interpolated.x = object1.x + (object2.x - object1.x) * ratio;
-//     } else if (key === 'y') {
-//       interpolated.y = object1.y + (object2.y - object1.y) * ratio;
-//     } else {
-//       (interpolated as any)[key] = (object1 as any)[key]
-//     }
-//   }
-//   return interpolated;
-// }
+  const { x, y } = interpolateCoords(basePlayer, nextPlayer, ratio);
+  return {
+    id: basePlayer.id,
+    x: x,
+    y: y,
+  };
+}
+
+function interpolateCoords(c1: Coords, c2: Coords, ratio: number): Coords {
+  return {
+    x: c1.x + (c2.x - c1.x) * ratio,
+    y: c1.y + (c2.y - c1.y) * ratio,
+  }
+}
+
+function interpolateBombs(baseBombs: Bomb[], nextBombs: Bomb[], ratio: number): Bomb[] {
+  let interpolated = [];
+
+  const nbMap: {[id: string]: Bomb} = {};
+  for (const nb of nextBombs) {
+    nbMap[nb.id] = nb;
+  }
+  for (const bb of baseBombs) {
+    interpolated.push(interpolateBomb(bb, nbMap[bb.id], ratio));
+  }
+  return interpolated;
+}
+
+function interpolateBomb(baseBomb: Bomb, nextBomb: Bomb | undefined, ratio: number): Bomb {
+  if (!nextBomb) {
+    return baseBomb;
+  }
+
+  const { x, y } = interpolateCoords(baseBomb, nextBomb, ratio);
+  return {
+    id: baseBomb.id,
+    x: x,
+    y: y,
+    exploded: baseBomb.exploded,
+  };
+}

@@ -5,6 +5,7 @@ import { renderMainMenu, renderGame } from './render';
 import { getAndWipeMoveBuffer, startCapturingInput, stopCapturingInput } from './input';
 import { initState, getState, processLocalMoves, processGameUpdates } from './state';
 import { Update } from '../shared/types';
+import { fpsDiv, debugEnabled } from './debug';
 
 import './css/bootstrap-reboot.css';
 import './css/main.css';
@@ -46,8 +47,10 @@ function outerGameLoop(socket: typeof Socket): (ts: number) => void {
       lastUpdateTime = ts;
     }
     const dt = (ts - lastUpdateTime) / 1000;
+    if (debugEnabled()) {
+      fpsDiv.innerText = 'FPS: ' + Math.trunc(1/dt);
+    }
     lastUpdateTime = ts;
-    console.log(dt);
     if (gameState === 'menu') {
       renderMainMenu();
       return;
@@ -60,7 +63,7 @@ function outerGameLoop(socket: typeof Socket): (ts: number) => void {
       processLocalMoves(dt, moves);
     }
     if (receivedUpdates.length !== 0) {
-      processGameUpdates(receivedUpdates);
+      processGameUpdates(receivedUpdates, ts);
       receivedUpdates = [];
     }
 
