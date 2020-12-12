@@ -8,8 +8,8 @@
     "builddev": "webpack --config webpack.dev.js",
     "lint": "eslint --cache --ext .js,.jsx src/",
     "typecheck": "tsc --pretty --noEmit -p tsconfig.client.json",
-    "develop": "cross-env NODE_ENV=development ts-node-dev --project tsconfig.server.json src/server/server.ts",
-    "start": "cross-env NODE_ENV=production ts-node --project tsconfig.server.json src/server/server.ts",
+    "develop": "NODE_ENV=development ts-node-dev --project tsconfig.server.json src/server/server.ts",
+    "start": "NODE_ENV=production ts-node --project tsconfig.server.json src/server/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -23,10 +23,10 @@
     "socket.io": "^3.0.4",
     "socket.io-client": "^3.0.4",
     "throttle-debounce": "^3.0.1",
-    "webpack": "^5.10.0",
-    "webpack-dev-middleware": "^4.0.2",
+    "ts-node": "^9.1.1",
     "typescript": "^4.1.2",
-    "ts-node": "^9.1.1"
+    "webpack": "^5.10.0",
+    "webpack-dev-middleware": "^4.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.12.10",
