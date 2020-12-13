@@ -49,6 +49,10 @@ export interface State {
   bombs: Bomb[];
 }
 
+export interface ClientState extends State {
+  debugServerMe: SequencedPlayer;
+}
+
 export interface Update extends State {
   t: number;
 }

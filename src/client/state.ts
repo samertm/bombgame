@@ -1,4 +1,4 @@
-import { Update, State, SequencedDtMove, SequencedMove, Coords, Player, Bomb } from '../shared/types';
+import { Update, SequencedDtMove, SequencedMove, Coords, Player, Bomb, ClientState } from '../shared/types';
 import { movePlayer } from '../shared/player';
 
 
@@ -45,7 +45,7 @@ export function processGameUpdates(updates: Update[], ts: number) {
   }
 }
 
-export function getState(now: number): State | undefined {
+export function getState(now: number): ClientState | undefined {
   if (gameUpdates.length === 0) {
     return;
   }
@@ -97,6 +97,7 @@ export function getState(now: number): State | undefined {
     // Only one server update, so we can't interpolate.
     return {
       me: player,
+      debugServerMe: latestServerUpdate.me,
       others: gameUpdates[0].others,
       bombs: gameUpdates[0].bombs,
     };
@@ -108,6 +109,7 @@ export function getState(now: number): State | undefined {
 
   return {
     me: player,
+    debugServerMe: latestServerUpdate.me,
     others: interpolatePlayers(baseUpdate.others, nextUpdate.others, ratio),
     bombs: interpolateBombs(baseUpdate.bombs, nextUpdate.bombs, ratio),
   }

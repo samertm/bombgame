@@ -1,6 +1,6 @@
 import { debounce } from 'throttle-debounce';
 import { getAsset } from './assets';
-import { State, Player, Bomb } from '../shared/types';
+import { ClientState, Player, Bomb } from '../shared/types';
 
 import {
   PLAYER_RADIUS,
@@ -8,6 +8,8 @@ import {
   BOMB_RADIUS,
   BOMB_EXPLOSION_RADIUS,
 } from '../shared/constants';
+
+import { debugEnabled } from './debug';
 
 const canvas = document.getElementById('game-canvas')! as HTMLCanvasElement;
 const context = canvas.getContext('2d')!;
@@ -21,11 +23,11 @@ function setCanvasDimensions() {
 
 window.addEventListener('resize', debounce(40, setCanvasDimensions));
 
-export function renderGame(state?: State) {
+export function renderGame(state?: ClientState) {
   if (!state) {
     return;
   }
-  const { me, others, bombs } = state;
+  const { me, debugServerMe, others, bombs } = state;
 
   // Draw background
   renderBackground(me.x, me.y);
@@ -41,6 +43,9 @@ export function renderGame(state?: State) {
   }
 
   // Draw all players
+  if (debugEnabled()) {
+    renderPlayer(me, debugServerMe, true);
+  }
   renderPlayer(me, me);
   for (const other of others) {
     renderPlayer(me, other);
@@ -65,7 +70,7 @@ function renderBackground(x: number, y: number) {
 }
 
 // Renders a ship at the given coordinates
-function renderPlayer(me: Player, player: Player) {
+function renderPlayer(me: Player, player: Player, debug?: boolean) {
   const { x, y } = player;
   const canvasX = canvas.width / 2 + x - me.x;
   const canvasY = canvas.height / 2 + y - me.y;
