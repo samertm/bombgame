@@ -1,5 +1,6 @@
-import { Update, SequencedDtMove, SequencedMove, Coords, Player, Bomb, ClientState } from '../shared/types';
+import { Update, SequencedDtMove, SequencedMove, Coords, SequencedPlayer, Player, Bomb, ClientState } from '../shared/types';
 import { movePlayer } from '../shared/player';
+import { debugEnabled } from './debug';
 
 
 const RENDER_DELAY_MS = 100;
@@ -54,24 +55,25 @@ export function getState(now: number): ClientState | undefined {
 
   // Update the player location.
   // Copy the latest server update so we can modify the player.
-  const player = {
+  const player: SequencedPlayer = {
     sequence: latestServerUpdate.me.sequence,
     id: latestServerUpdate.me.id,
     x: latestServerUpdate.me.x,
     y: latestServerUpdate.me.y,
   };
 
-  let mostUpToDateLocalMoveIndex: number | undefined;
-  for (let i = 0; i < localMoves.length; i++) {
-    const sm = localMoves[i];
-    if (sm.sequence < player.sequence) {
-      continue;
-    }
-    if (sm.sequence === player.sequence) {
-      mostUpToDateLocalMoveIndex = i;
-      continue;
-    }
-    movePlayer(player, sm.dt, sm.move);
+  let mostUpToDateLocalMoveIndex = applyLocalMoves(player);
+  if (debugEnabled() && gameUpdates.length > 1) {
+    const prevUpdate = gameUpdates[gameUpdates.length - 2];
+    const prevPlayer: SequencedPlayer = {
+      sequence: prevUpdate.me.sequence,
+      id: prevUpdate.me.id,
+      x: prevUpdate.me.x,
+      y: prevUpdate.me.y,
+    };
+    mostUpToDateLocalMoveIndex = applyLocalMoves(prevPlayer);
+    console.log("prev player:", prevPlayer, "current player:", player,
+                "diff x:", player.x-prevPlayer.x, "diff y:", player.y-prevPlayer.y);
   }
 
   // Remove all states up to the most recent local move.
@@ -113,6 +115,22 @@ export function getState(now: number): ClientState | undefined {
     others: interpolatePlayers(baseUpdate.others, nextUpdate.others, ratio),
     bombs: interpolateBombs(baseUpdate.bombs, nextUpdate.bombs, ratio),
   }
+}
+
+function applyLocalMoves(player: SequencedPlayer): number | undefined {
+  let mostUpToDateLocalMoveIndex: number | undefined;
+  for (let i = 0; i < localMoves.length; i++) {
+    const sm = localMoves[i];
+    if (sm.sequence < player.sequence) {
+      continue;
+    }
+    if (sm.sequence === player.sequence) {
+      mostUpToDateLocalMoveIndex = i;
+      continue;
+    }
+    movePlayer(player, sm.dt, sm.move);
+  }
+  return mostUpToDateLocalMoveIndex;
 }
 
 function interpolatePlayers(basePlayers: Player[], nextPlayers: Player[], ratio: number): Player[] {
