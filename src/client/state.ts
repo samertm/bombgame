@@ -98,7 +98,7 @@ export function getState(now: number): ClientState | undefined {
   if (gameUpdates.length === 1) {
     // Only one server update, so we can't interpolate.
     return {
-      me: player,
+      me: latestServerUpdate.me, //player,
       debugServerMe: latestServerUpdate.me,
       others: gameUpdates[0].others,
       bombs: gameUpdates[0].bombs,
@@ -110,7 +110,7 @@ export function getState(now: number): ClientState | undefined {
   const ratio = (delayedUpdateTime - baseUpdate.t) / (nextUpdate.t - baseUpdate.t);
 
   return {
-    me: player,
+    me: interpolateMe(baseUpdate.me, nextUpdate.me, ratio), //player,
     debugServerMe: latestServerUpdate.me,
     others: interpolatePlayers(baseUpdate.others, nextUpdate.others, ratio),
     bombs: interpolateBombs(baseUpdate.bombs, nextUpdate.bombs, ratio),
@@ -131,6 +131,10 @@ function applyLocalMoves(player: SequencedPlayer): number | undefined {
     movePlayer(player, sm.dt, sm.move);
   }
   return mostUpToDateLocalMoveIndex;
+}
+
+function interpolateMe(baseMe: SequencedPlayer, nextMe: SequencedPlayer, ratio: number): SequencedPlayer {
+  return interpolatePlayer(baseMe, nextMe, ratio) as SequencedPlayer;
 }
 
 function interpolatePlayers(basePlayers: Player[], nextPlayers: Player[], ratio: number): Player[] {
