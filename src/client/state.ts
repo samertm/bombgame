@@ -1,6 +1,6 @@
 import { Update, SequencedDtMove, SequencedMove, Coords, SequencedPlayer, Player, Bomb, ClientState } from '../shared/types';
 import { movePlayer } from '../shared/player';
-import { debugEnabled } from './debug';
+import { debugEnabled, nop } from './debug';
 
 
 const RENDER_DELAY_MS = 100;
@@ -98,7 +98,7 @@ export function getState(now: number): ClientState | undefined {
   if (gameUpdates.length === 1) {
     // Only one server update, so we can't interpolate.
     return {
-      me: latestServerUpdate.me, //player,
+      me: player, //latestServerUpdate.me, //player,
       debugServerMe: latestServerUpdate.me,
       others: gameUpdates[0].others,
       bombs: gameUpdates[0].bombs,
@@ -110,12 +110,14 @@ export function getState(now: number): ClientState | undefined {
   const ratio = (delayedUpdateTime - baseUpdate.t) / (nextUpdate.t - baseUpdate.t);
 
   return {
-    me: interpolateMe(baseUpdate.me, nextUpdate.me, ratio), //player,
+    me: player, //interpolateMe(baseUpdate.me, nextUpdate.me, ratio), //player,
     debugServerMe: latestServerUpdate.me,
     others: interpolatePlayers(baseUpdate.others, nextUpdate.others, ratio),
     bombs: interpolateBombs(baseUpdate.bombs, nextUpdate.bombs, ratio),
   }
 }
+
+
 
 function applyLocalMoves(player: SequencedPlayer): number | undefined {
   let mostUpToDateLocalMoveIndex: number | undefined;
@@ -132,6 +134,10 @@ function applyLocalMoves(player: SequencedPlayer): number | undefined {
   }
   return mostUpToDateLocalMoveIndex;
 }
+
+nop(() => {
+  console.log(interpolateMe);
+})
 
 function interpolateMe(baseMe: SequencedPlayer, nextMe: SequencedPlayer, ratio: number): SequencedPlayer {
   return interpolatePlayer(baseMe, nextMe, ratio) as SequencedPlayer;
