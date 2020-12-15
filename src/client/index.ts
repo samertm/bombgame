@@ -5,7 +5,7 @@ import { renderMainMenu, renderGame } from './render';
 import { getAndWipeMoveBuffer, startCapturingInput, stopCapturingInput } from './input';
 import { initState, getState, processLocalMoves, processGameUpdates } from './state';
 import { Update } from '../shared/types';
-import { fpsDiv, debugEnabled } from './debug';
+import { fpsDiv, latencyDiv, serverTickRateDiv, debugEnabled } from './debug';
 
 import './css/bootstrap-reboot.css';
 import './css/main.css';
@@ -40,6 +40,8 @@ function main() {
   }).catch(console.error);
 }
 
+let clientSequences: {[sequence: number]: number} = {};
+
 function outerGameLoop(socket: typeof Socket): (ts: number) => void {
   return (ts: DOMHighResTimeStamp) => {
     window.requestAnimationFrame(outerGameLoop(socket));
@@ -59,10 +61,23 @@ function outerGameLoop(socket: typeof Socket): (ts: number) => void {
     const moves = getAndWipeMoveBuffer();
     if (moves.length !== 0) {
       // Send input if moves have been made.
+      if (debugEnabled()) {
+        for (let move of moves) {
+          clientSequences[move.sequence] = ts;
+        }
+      }
       sendInput(socket, moves);
       processLocalMoves(dt, moves);
     }
     if (receivedUpdates.length !== 0) {
+      if (debugEnabled()) {
+        serverTickRateDiv.innerText = 'Server Tick Rate: ' + receivedUpdates[receivedUpdates.length-1].tickRate;
+        const originalTs = clientSequences[receivedUpdates[receivedUpdates.length - 1].me.sequence];
+        if (originalTs !== undefined) {
+          latencyDiv.innerText = 'Latency: ' + Math.trunc(ts - originalTs);
+          clientSequences = {};
+        }
+      }
       processGameUpdates(receivedUpdates, ts);
       receivedUpdates = [];
     }

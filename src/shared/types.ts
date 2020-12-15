@@ -55,4 +55,5 @@ export interface ClientState extends State {
 
 export interface Update extends State {
   t: number;
+  tickRate: number;
 }

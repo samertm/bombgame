@@ -25,7 +25,7 @@ export default class Game {
     this.bombs = [];
     this.lastUpdateTime = performance.now();
     this.tick = 0;
-    this.updateOnTick = 6;
+    this.updateOnTick = 1;
   }
 
   startUpdate() {
@@ -92,6 +92,7 @@ export default class Game {
 
           sendGameUpdate(socket, {
             t: now,
+            tickRate: Math.trunc(1/dt),
             me: player.serialize(),
             others: others,
             bombs: bombs,

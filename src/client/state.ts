@@ -72,8 +72,8 @@ export function getState(now: number): ClientState | undefined {
       y: prevUpdate.me.y,
     };
     mostUpToDateLocalMoveIndex = applyLocalMoves(prevPlayer);
-    console.log("prev player:", prevPlayer, "current player:", player,
-                "diff x:", player.x-prevPlayer.x, "diff y:", player.y-prevPlayer.y);
+    // console.log("prev player:", prevPlayer, "current player:", player,
+    //             "diff x:", player.x-prevPlayer.x, "diff y:", player.y-prevPlayer.y);
   }
 
   // Remove all states up to the most recent local move.
