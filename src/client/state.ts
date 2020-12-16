@@ -1,9 +1,12 @@
 import { Update, SequencedDtMove, SequencedMove, Coords, SequencedPlayer, Player, Bomb, ClientState } from '../shared/types';
 import { movePlayer } from '../shared/player';
-import { debugEnabled, nop } from './debug';
+import { distanceTo } from '../shared/collisions';
+import { getPlayerInterpolationRatio, shouldPrintClientServerPositionAndToggle } from './debug';
 
 
 const RENDER_DELAY_MS = 100;
+const STILL_PLAYER_SHOULD_TELEPORT_DISTANCE = 10;
+const MOVING_PLAYER_SHOULD_TELEPORT_DISTANCE = 100;
 
 const gameUpdates: Update[] = [];
 let gameStart = 0;
@@ -15,9 +18,12 @@ export function initState() {
 }
 
 let localMoves: SequencedDtMove[] = [];
+let isMoving = false;
 
 export function processLocalMoves(dt: number, smoves: SequencedMove[]) {
+  isMoving = false;
   for (const sm of smoves) {
+    isMoving = isMoving || sm.move.left || sm.move.right || sm.move.up || sm.move.down;
     localMoves.push({
       dt: dt,
       sequence: sm.sequence,
@@ -46,6 +52,8 @@ export function processGameUpdates(updates: Update[], ts: number) {
   }
 }
 
+let previousPlayerCoords: {[sequence: number]: Coords} = {};
+
 export function getState(now: number): ClientState | undefined {
   if (gameUpdates.length === 0) {
     return;
@@ -55,26 +63,32 @@ export function getState(now: number): ClientState | undefined {
 
   // Update the player location.
   // Copy the latest server update so we can modify the player.
-  const player: SequencedPlayer = {
+  let player: SequencedPlayer = {
     sequence: latestServerUpdate.me.sequence,
     id: latestServerUpdate.me.id,
     x: latestServerUpdate.me.x,
     y: latestServerUpdate.me.y,
   };
 
-  let mostUpToDateLocalMoveIndex = applyLocalMoves(player);
-  if (debugEnabled() && gameUpdates.length > 1) {
-    const prevUpdate = gameUpdates[gameUpdates.length - 2];
-    const prevPlayer: SequencedPlayer = {
-      sequence: prevUpdate.me.sequence,
-      id: prevUpdate.me.id,
-      x: prevUpdate.me.x,
-      y: prevUpdate.me.y,
-    };
-    mostUpToDateLocalMoveIndex = applyLocalMoves(prevPlayer);
-    // console.log("prev player:", prevPlayer, "current player:", player,
-    //             "diff x:", player.x-prevPlayer.x, "diff y:", player.y-prevPlayer.y);
+  const prevPlayerCoords = previousPlayerCoords[player.sequence];
+  if (prevPlayerCoords) {
+    const dist = distanceTo(prevPlayerCoords, player);
+    // If the player is not moving and they're pretty close to their
+    // server location, don't move them.
+    if (!isMoving && dist < STILL_PLAYER_SHOULD_TELEPORT_DISTANCE) {
+      player.x = prevPlayerCoords.x;
+      player.y = prevPlayerCoords.y;
+    } else if (dist < MOVING_PLAYER_SHOULD_TELEPORT_DISTANCE) {
+      // Move player a fraction of the way to the server location.
+      const serverCoords = {x: player.x, y: player.y};
+      player.x = prevPlayerCoords.x;
+      player.y = prevPlayerCoords.y;
+      player = interpolateMe(player, serverCoords, getPlayerInterpolationRatio());
+      previousPlayerCoords[player.sequence] = {x: player.x, y: player.y};
+    }
   }
+
+  let mostUpToDateLocalMoveIndex = applyLocalMoves(player);
 
   // Remove all states up to the most recent local move.
   if (mostUpToDateLocalMoveIndex !== undefined) {
@@ -93,6 +107,11 @@ export function getState(now: number): ClientState | undefined {
   if (delayedIdx !== -1) {
     // Remove all older updates, leaving at least one.
     gameUpdates.splice(0, delayedIdx);
+  }
+
+  if (shouldPrintClientServerPositionAndToggle()) {
+    console.log("CLIENT:", player);
+    console.log("SERVER:", latestServerUpdate.me);
   }
 
   if (gameUpdates.length === 1) {
@@ -124,23 +143,28 @@ function applyLocalMoves(player: SequencedPlayer): number | undefined {
   for (let i = 0; i < localMoves.length; i++) {
     const sm = localMoves[i];
     if (sm.sequence < player.sequence) {
+      delete previousPlayerCoords[sm.sequence];
       continue;
     }
     if (sm.sequence === player.sequence) {
+      previousPlayerCoords[sm.sequence] = {x: player.x, y: player.y};
       mostUpToDateLocalMoveIndex = i;
       continue;
     }
     movePlayer(player, sm.dt, sm.move);
+    previousPlayerCoords[sm.sequence] = {x: player.x, y: player.y};
   }
   return mostUpToDateLocalMoveIndex;
 }
 
-nop(() => {
-  console.log(interpolateMe);
-})
-
-function interpolateMe(baseMe: SequencedPlayer, nextMe: SequencedPlayer, ratio: number): SequencedPlayer {
-  return interpolatePlayer(baseMe, nextMe, ratio) as SequencedPlayer;
+function interpolateMe(baseMe: SequencedPlayer, nextCoords: Coords, ratio: number): SequencedPlayer {
+  const p = interpolatePlayer(baseMe, nextCoords, ratio);
+  return {
+    sequence: baseMe.sequence,
+    id: p.id,
+    x: p.x,
+    y: p.y,
+  };
 }
 
 function interpolatePlayers(basePlayers: Player[], nextPlayers: Player[], ratio: number): Player[] {
@@ -156,7 +180,7 @@ function interpolatePlayers(basePlayers: Player[], nextPlayers: Player[], ratio:
   return interpolated;
 }
 
-function interpolatePlayer(basePlayer: Player, nextPlayer: Player | undefined, ratio: number): Player {
+function interpolatePlayer(basePlayer: Player, nextPlayer: Coords | undefined, ratio: number): Player {
   if (!nextPlayer) {
     return basePlayer;
   }

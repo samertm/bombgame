@@ -7,6 +7,7 @@ import {
   MAP_SIZE,
   BOMB_RADIUS,
   BOMB_EXPLOSION_RADIUS,
+  TILE_SIZE,
 } from '../shared/constants';
 
 import { debugEnabled } from './debug';
@@ -37,6 +38,8 @@ export function renderGame(state?: ClientState) {
   context.lineWidth = 1;
   context.strokeRect(canvas.width / 2 - me.x, canvas.height / 2 - me.y, MAP_SIZE, MAP_SIZE);
 
+  renderGrid(me);
+
   // Draw bombs
   for (const b of bombs) {
     renderBomb(me, b);
@@ -49,6 +52,27 @@ export function renderGame(state?: ClientState) {
   renderPlayer(me, me);
   for (const other of others) {
     renderPlayer(me, other);
+  }
+}
+
+function renderGrid(me: Player) {
+  const startX = canvas.width / 2 - me.x;
+  const startY = canvas.height / 2 - me.y;
+  let dark = false;
+  for (let col = 0; col < Math.trunc(MAP_SIZE / TILE_SIZE); col++) {
+    for (let row = 0; row < Math.trunc(MAP_SIZE / TILE_SIZE); row++) {
+      if (dark) {
+        context.fillStyle = '#bf4000';
+      } else {
+        context.fillStyle = '#fc5603';
+      }
+      dark = !dark;
+      context.fillRect(
+        startX + col * TILE_SIZE,
+        startY + row * TILE_SIZE,
+        TILE_SIZE,
+        TILE_SIZE);
+    }
   }
 }
 
@@ -86,15 +110,6 @@ function renderPlayer(me: Player, player: Player, debug?: boolean) {
     PLAYER_RADIUS * 2,
   );
   context.restore();
-
-  // Draw health bar
-  context.fillStyle = 'white';
-  context.fillRect(
-    canvasX - PLAYER_RADIUS,
-    canvasY + PLAYER_RADIUS + 8,
-    PLAYER_RADIUS * 2,
-    2,
-  );
 }
 
 function renderBomb(me: Player, bomb: Bomb) {

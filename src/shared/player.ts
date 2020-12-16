@@ -1,5 +1,14 @@
-import { Player, Move } from './types';
+import { SequencedPlayer, Player, Move } from './types';
 import { PLAYER_SPEED, PLAYER_RADIUS, MAP_SIZE } from './constants';
+
+export function copySequencedPlayer(p: SequencedPlayer): SequencedPlayer {
+  return {
+    sequence: p.sequence,
+    id: p.id,
+    x: p.x,
+    y: p.y,
+  };
+}
 
 export function movePlayer(player: Player, dt: number, move: Move) {
   if (move.right && move.left) {

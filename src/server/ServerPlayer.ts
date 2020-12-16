@@ -3,6 +3,8 @@ import { BOMB_FUSE_TIME_MS } from '../shared/constants';
 import { movePlayer } from '../shared/player';
 import ServerBomb from './ServerBomb';
 
+const LAST_MOVE_DISCARDED_AFTER_MS = 50;
+
 export default class ServerPlayer {
   id: string;
   username: string;
@@ -10,6 +12,7 @@ export default class ServerPlayer {
   y: number;
   seqmoves: SequencedMove[];
   lastMove?: SequencedMove;
+  lastMoveTs?: number;
   alive: boolean;
 
   bombCooldownMs: number;
@@ -46,7 +49,8 @@ export default class ServerPlayer {
     if (seqmoves.length === 0) {
       // Use the last move if the user didn't give us a move in the
       // meantime.
-      if (!this.lastMove) {
+      if (!this.lastMove ||
+          (this.lastMoveTs && (now >= this.lastMoveTs + LAST_MOVE_DISCARDED_AFTER_MS))) {
         return [];
       }
       seqmoves = [this.lastMove];
@@ -60,6 +64,7 @@ export default class ServerPlayer {
       }
       movePlayer(this, dt/seqmoves.length, sm.move);
       this.lastMove = sm;
+      this.lastMoveTs = now;
     }
     this.seqmoves = [];
 

@@ -25,7 +25,7 @@ export default class Game {
     this.bombs = [];
     this.lastUpdateTime = performance.now();
     this.tick = 0;
-    this.updateOnTick = 1;
+    this.updateOnTick = 6;
   }
 
   startUpdate() {
