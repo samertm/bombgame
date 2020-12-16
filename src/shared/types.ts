@@ -21,7 +21,7 @@ export interface SequencedDtMove extends SequencedMove {
   dt: number;
 }
 
-export interface Coords {
+export interface Coord {
   x: number;
   y: number;
 }
@@ -56,4 +56,9 @@ export interface ClientState extends State {
 export interface Update extends State {
   t: number;
   tickRate: number;
+}
+
+export interface Tile {
+  row: number;
+  col: number;
 }

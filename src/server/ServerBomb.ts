@@ -1,7 +1,7 @@
 import ServerPlayer from './ServerPlayer';
 import { Bomb } from '../shared/types';
 import { BOMB_EXPLOSION_RADIUS, PLAYER_RADIUS } from '../shared/constants';
-import { distanceTo } from './collisions';
+import { distanceTo, coordToTile, tileToCoord } from '../shared/collisions';
 
 export default class ServerBomb {
   id: string;
@@ -12,8 +12,9 @@ export default class ServerBomb {
 
   constructor(x: number, y: number, explodeTime: number) {
     this.id = ''+Math.trunc(Math.random()*10000000000000000);
-    this.x = x;
-    this.y = y;
+    const coord = tileToCoord(coordToTile({x: x, y: y}));
+    this.x = coord.x;
+    this.y = coord.y;
     this.explodeTime = explodeTime;
     this.exploded = false;
   }

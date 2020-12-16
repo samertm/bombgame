@@ -1,4 +1,4 @@
-import { Update, SequencedDtMove, SequencedMove, Coords, SequencedPlayer, Player, Bomb, ClientState } from '../shared/types';
+import { Update, SequencedDtMove, SequencedMove, Coord, SequencedPlayer, Player, Bomb, ClientState } from '../shared/types';
 import { movePlayer } from '../shared/player';
 import { distanceTo } from '../shared/collisions';
 import { getPlayerInterpolationRatio, shouldPrintClientServerPositionAndToggle } from './debug';
@@ -52,7 +52,7 @@ export function processGameUpdates(updates: Update[], ts: number) {
   }
 }
 
-let previousPlayerCoords: {[sequence: number]: Coords} = {};
+let previousPlayerCoord: {[sequence: number]: Coord} = {};
 
 export function getState(now: number): ClientState | undefined {
   if (gameUpdates.length === 0) {
@@ -70,21 +70,21 @@ export function getState(now: number): ClientState | undefined {
     y: latestServerUpdate.me.y,
   };
 
-  const prevPlayerCoords = previousPlayerCoords[player.sequence];
-  if (prevPlayerCoords) {
-    const dist = distanceTo(prevPlayerCoords, player);
+  const prevPlayerCoord = previousPlayerCoord[player.sequence];
+  if (prevPlayerCoord) {
+    const dist = distanceTo(prevPlayerCoord, player);
     // If the player is not moving and they're pretty close to their
     // server location, don't move them.
     if (!isMoving && dist < STILL_PLAYER_SHOULD_TELEPORT_DISTANCE) {
-      player.x = prevPlayerCoords.x;
-      player.y = prevPlayerCoords.y;
+      player.x = prevPlayerCoord.x;
+      player.y = prevPlayerCoord.y;
     } else if (dist < MOVING_PLAYER_SHOULD_TELEPORT_DISTANCE) {
       // Move player a fraction of the way to the server location.
-      const serverCoords = {x: player.x, y: player.y};
-      player.x = prevPlayerCoords.x;
-      player.y = prevPlayerCoords.y;
-      player = interpolateMe(player, serverCoords, getPlayerInterpolationRatio());
-      previousPlayerCoords[player.sequence] = {x: player.x, y: player.y};
+      const serverCoord = {x: player.x, y: player.y};
+      player.x = prevPlayerCoord.x;
+      player.y = prevPlayerCoord.y;
+      player = interpolateMe(player, serverCoord, getPlayerInterpolationRatio());
+      previousPlayerCoord[player.sequence] = {x: player.x, y: player.y};
     }
   }
 
@@ -143,22 +143,22 @@ function applyLocalMoves(player: SequencedPlayer): number | undefined {
   for (let i = 0; i < localMoves.length; i++) {
     const sm = localMoves[i];
     if (sm.sequence < player.sequence) {
-      delete previousPlayerCoords[sm.sequence];
+      delete previousPlayerCoord[sm.sequence];
       continue;
     }
     if (sm.sequence === player.sequence) {
-      previousPlayerCoords[sm.sequence] = {x: player.x, y: player.y};
+      previousPlayerCoord[sm.sequence] = {x: player.x, y: player.y};
       mostUpToDateLocalMoveIndex = i;
       continue;
     }
     movePlayer(player, sm.dt, sm.move);
-    previousPlayerCoords[sm.sequence] = {x: player.x, y: player.y};
+    previousPlayerCoord[sm.sequence] = {x: player.x, y: player.y};
   }
   return mostUpToDateLocalMoveIndex;
 }
 
-function interpolateMe(baseMe: SequencedPlayer, nextCoords: Coords, ratio: number): SequencedPlayer {
-  const p = interpolatePlayer(baseMe, nextCoords, ratio);
+function interpolateMe(baseMe: SequencedPlayer, nextCoord: Coord, ratio: number): SequencedPlayer {
+  const p = interpolatePlayer(baseMe, nextCoord, ratio);
   return {
     sequence: baseMe.sequence,
     id: p.id,
@@ -180,12 +180,12 @@ function interpolatePlayers(basePlayers: Player[], nextPlayers: Player[], ratio:
   return interpolated;
 }
 
-function interpolatePlayer(basePlayer: Player, nextPlayer: Coords | undefined, ratio: number): Player {
+function interpolatePlayer(basePlayer: Player, nextPlayer: Coord | undefined, ratio: number): Player {
   if (!nextPlayer) {
     return basePlayer;
   }
 
-  const { x, y } = interpolateCoords(basePlayer, nextPlayer, ratio);
+  const { x, y } = interpolateCoord(basePlayer, nextPlayer, ratio);
   return {
     id: basePlayer.id,
     x: x,
@@ -193,7 +193,7 @@ function interpolatePlayer(basePlayer: Player, nextPlayer: Coords | undefined, r
   };
 }
 
-function interpolateCoords(c1: Coords, c2: Coords, ratio: number): Coords {
+function interpolateCoord(c1: Coord, c2: Coord, ratio: number): Coord {
   return {
     x: c1.x + (c2.x - c1.x) * ratio,
     y: c1.y + (c2.y - c1.y) * ratio,
@@ -218,7 +218,7 @@ function interpolateBomb(baseBomb: Bomb, nextBomb: Bomb | undefined, ratio: numb
     return baseBomb;
   }
 
-  const { x, y } = interpolateCoords(baseBomb, nextBomb, ratio);
+  const { x, y } = interpolateCoord(baseBomb, nextBomb, ratio);
   return {
     id: baseBomb.id,
     x: x,
