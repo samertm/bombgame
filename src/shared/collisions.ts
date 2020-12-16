@@ -1,5 +1,53 @@
-import { MAP_SIZE, TILE_SIZE } from './constants';
-import { Coord, Tile } from '../shared/types';
+import { MAP_SIZE, TILE_SIZE, PLAYER_RADIUS } from './constants';
+import { Coord, Tile, Player, Block } from '../shared/types';
+
+export interface Circle extends Coord {
+  radius: number,
+}
+
+export interface Rectangle {
+  left: number,
+  right: number,
+  top: number,
+  bottom: number,
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+export function playerToCircle(p: Player): Circle {
+  return {
+    x: p.x,
+    y: p.y,
+    radius: PLAYER_RADIUS,
+  };
+}
+
+export function blockToRectangle(b: Block): Rectangle {
+  return {
+    left: b.x - (TILE_SIZE / 2),
+    right: b.x + (TILE_SIZE / 2),
+    top: b.y - (TILE_SIZE / 2),
+    bottom: b.y + (TILE_SIZE / 2),
+  };
+}
+
+export function circleRectangleCollision(circle: Circle, rect: Rectangle): boolean {
+  // Find the closest point to the circle within the rectangle.
+  const closestX = clamp(circle.x, rect.left, rect.right);
+  const closestY = clamp(circle.y, rect.top, rect.bottom);
+
+  // Calculate the distance between the circle's center and this
+  // closest point.
+  const distanceX = circle.x - closestX;
+  const distanceY = circle.y - closestY;
+
+  // If the distance is less than the circle's radius, an intersection
+  // occurs.
+  const distanceSquared = (distanceX*distanceX) + (distanceY*distanceY);
+  return distanceSquared < (circle.radius*circle.radius);
+}
 
 export function distanceTo(c1: Coord, c2: Coord): number {
   const dx = c1.x - c2.x;

@@ -1,4 +1,4 @@
-import { coordToTile } from './collisions';
+import { coordToTile, circleRectangleCollision } from './collisions';
 import { TILE_SIZE, MAP_SIZE } from './constants';
 
 test('coordToTile works', () => {

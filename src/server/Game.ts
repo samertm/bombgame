@@ -1,8 +1,10 @@
 import { Socket } from 'socket.io';
-import { SequencedMove, Player, Bomb } from '../shared/types';
-import { MAP_SIZE } from '../shared/constants';
+import { SequencedMove, Player, Bomb, Block } from '../shared/types';
+import { tileToCoord } from '../shared/collisions';
+import { MAP_SIZE, TILE_SIZE } from '../shared/constants';
 import ServerPlayer from './ServerPlayer';
 import ServerBomb from './ServerBomb';
+import ServerBlock from './ServerBlock';
 import { performance } from 'perf_hooks';
 import {
   sendGameUpdate,
@@ -19,6 +21,11 @@ export default class Game {
   tick: number;
   updateOnTick: number;
 
+  forceUpdate: boolean;
+
+  // 2D grid. First index is col, second is row.
+  blocks: (ServerBlock | undefined)[][];
+
   constructor() {
     this.sockets = {};
     this.players = {};
@@ -26,23 +33,71 @@ export default class Game {
     this.lastUpdateTime = performance.now();
     this.tick = 0;
     this.updateOnTick = 6;
+    this.forceUpdate = false;
+
+    // Create blocks grid.
+    this.blocks = [];
+    for (let i = 0; i < MAP_SIZE/TILE_SIZE; i++) {
+      const inner: (ServerBlock|undefined)[] = [];
+      inner.length = MAP_SIZE/TILE_SIZE;
+      this.blocks.push(inner);
+    }
+  }
+
+  initializeGame() {
+    // Place indestructable blocks
+    let skiprow = false;
+    for (let i = 1; i < MAP_SIZE / TILE_SIZE - 1; i++) {
+      if (skiprow) {
+        skiprow = !skiprow;
+        continue;
+      }
+      skiprow = !skiprow;
+      let skipcol = false;
+      for (let j = 1; j < MAP_SIZE / TILE_SIZE - 1; j++) {
+        if (skipcol) {
+          skipcol = !skipcol;
+          continue;
+        }
+        skipcol = !skipcol;
+        const loc = tileToCoord({col: j, row: i});
+        this.blocks[i][j] = new ServerBlock(
+          loc.x,
+          loc.y,
+          false,
+        );
+      }
+    }
   }
 
   startUpdate() {
+    this.initializeGame();
     this.update();
   }
 
   addPlayer(socket: Socket, username: string) {
     this.sockets[socket.id] = socket;
 
-    const x = MAP_SIZE * (0.25 + Math.random() * 0.5);
-    const y = MAP_SIZE * (0.25 + Math.random() * 0.5);
-    this.players[socket.id] = new ServerPlayer(socket.id, username, x, y);
+    let found = false
+    while (!found) {
+      const col = Math.trunc(Math.random() * (MAP_SIZE/TILE_SIZE - 1));
+      const row = Math.trunc(Math.random() * (MAP_SIZE/TILE_SIZE - 1));
+      if (this.blocks[row][col]) {
+        continue;
+      }
+      const loc = tileToCoord({row: row, col: col});
+
+      this.players[socket.id] = new ServerPlayer(socket.id, username, loc.x, loc.y);
+      break;
+    }
+
+    this.forceUpdate = true;
   }
 
   removePlayer(socket: Socket) {
     delete this.sockets[socket.id];
     delete this.players[socket.id];
+    this.forceUpdate = true;
   }
 
   handleInput(socket: Socket, input: SequencedMove[]) {
@@ -61,9 +116,10 @@ export default class Game {
 
       for (let socketid in this.sockets) {
         const player = this.players[socketid];
-        const bombs = player.update(dt, now);
+        const bombs = player.update(dt, now, this.blocks);
         for (const b of bombs) {
           this.bombs.push(b);
+          this.forceUpdate = true;
         }
       }
 
@@ -72,7 +128,28 @@ export default class Game {
       }
 
       // Send update every other tick.
-      if (this.tick % this.updateOnTick === 0) {
+      if (this.forceUpdate ||
+          this.tick % this.updateOnTick === 0) {
+        this.forceUpdate = false;
+
+        const bombs: Bomb[] = [];
+        for (const b of this.bombs) {
+          bombs.push(b.serialize());
+        }
+
+        const blocks: (Block | undefined)[][] = [];
+        for (const row of this.blocks) {
+          const serializedrow: (Block | undefined)[] = [];
+          for (const block of row) {
+            if (block) {
+              serializedrow.push(block.serialize());
+            } else {
+              serializedrow.push(undefined);
+            }
+          }
+          blocks.push(serializedrow);
+        }
+
         for (let socketid in this.sockets) {
           const socket = this.sockets[socketid];
           const player = this.players[socketid];
@@ -85,17 +162,13 @@ export default class Game {
             others.push(this.players[id].serialize());
           }
 
-          const bombs: Bomb[] = [];
-          for (const b of this.bombs) {
-            bombs.push(b.serialize());
-          }
-
           sendGameUpdate(socket, {
             t: now,
             tickRate: Math.trunc(1/dt),
             me: player.serialize(),
             others: others,
             bombs: bombs,
+            blocks: blocks,
           });
         }
 

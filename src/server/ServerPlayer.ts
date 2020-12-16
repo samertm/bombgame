@@ -1,4 +1,4 @@
-import { SequencedMove, SequencedPlayer } from '../shared/types';
+import { SequencedMove, SequencedPlayer, Block } from '../shared/types';
 import { BOMB_FUSE_TIME_MS } from '../shared/constants';
 import { movePlayer } from '../shared/player';
 import ServerBomb from './ServerBomb';
@@ -40,7 +40,7 @@ export default class ServerPlayer {
     }
   }
 
-  update(dt: number, now: number): ServerBomb[] {
+  update(dt: number, now: number, blocks: (Block | undefined)[][]): ServerBomb[] {
     if (!this.alive) {
       return[];
     }
@@ -62,7 +62,7 @@ export default class ServerPlayer {
       if (sm.move.bomb) {
         triggeredBomb = true;
       }
-      movePlayer(this, dt/seqmoves.length, sm.move);
+      movePlayer(this, dt/seqmoves.length, sm.move, blocks);
       this.lastMove = sm;
       this.lastMoveTs = now;
     }

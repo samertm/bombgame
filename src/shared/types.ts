@@ -39,6 +39,10 @@ export interface Player {
   y: number;
 }
 
+export interface Block extends Coord {
+  destructable: boolean;
+}
+
 export interface SequencedPlayer extends Player {
   sequence: number;
 }
@@ -47,6 +51,7 @@ export interface State {
   me: SequencedPlayer;
   others: Player[];
   bombs: Bomb[];
+  blocks: (Block | undefined)[][];
 }
 
 export interface ClientState extends State {

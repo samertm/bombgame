@@ -1,6 +1,6 @@
 import { debounce } from 'throttle-debounce';
 import { getAsset } from './assets';
-import { ClientState, Player, Bomb } from '../shared/types';
+import { ClientState, Player, Bomb, Block, Coord } from '../shared/types';
 
 import {
   PLAYER_RADIUS,
@@ -28,36 +28,50 @@ export function renderGame(state?: ClientState) {
   if (!state) {
     return;
   }
-  const { me, debugServerMe, others, bombs } = state;
+  const { me, debugServerMe, others, bombs, blocks } = state;
+  // The camera x/y is the center of the camera, relative to the grid.
+  const camera = {
+    x: MAP_SIZE / 2,
+    y: MAP_SIZE / 2,
+  };
 
   // Draw background
-  renderBackground(me.x, me.y);
+  renderBackground(camera.x, camera.y);
 
   // Draw boundaries
   context.strokeStyle = 'black';
   context.lineWidth = 1;
-  context.strokeRect(canvas.width / 2 - me.x, canvas.height / 2 - me.y, MAP_SIZE, MAP_SIZE);
+  context.strokeRect(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y, MAP_SIZE, MAP_SIZE);
 
-  renderGrid(me);
+  renderGrid(camera);
 
   // Draw bombs
   for (const b of bombs) {
-    renderBomb(me, b);
+    renderBomb(camera, b);
+  }
+
+  // Draw blocks
+  for (const row of blocks) {
+    for (const bl of row) {
+      if (bl) {
+        renderBlock(camera, bl);
+      }
+    }
   }
 
   // Draw all players
   if (debugEnabled()) {
-    renderPlayer(me, debugServerMe, true);
+    renderPlayer(camera, debugServerMe, true);
   }
-  renderPlayer(me, me);
+  renderPlayer(camera, me);
   for (const other of others) {
-    renderPlayer(me, other);
+    renderPlayer(camera, other);
   }
 }
 
-function renderGrid(me: Player) {
-  const startX = canvas.width / 2 - me.x;
-  const startY = canvas.height / 2 - me.y;
+function renderGrid(camera: Coord) {
+  const startX = canvas.width / 2 - camera.x;
+  const startY = canvas.height / 2 - camera.y;
   let dark = false;
   for (let col = 0; col < Math.trunc(MAP_SIZE / TILE_SIZE); col++) {
     for (let row = 0; row < Math.trunc(MAP_SIZE / TILE_SIZE); row++) {
@@ -94,10 +108,10 @@ function renderBackground(x: number, y: number) {
 }
 
 // Renders a ship at the given coordinates
-function renderPlayer(me: Player, player: Player, debug?: boolean) {
+function renderPlayer(camera: Coord, player: Player, debug?: boolean) {
   const { x, y } = player;
-  const canvasX = canvas.width / 2 + x - me.x;
-  const canvasY = canvas.height / 2 + y - me.y;
+  const canvasX = canvas.width / 2 + x - camera.x;
+  const canvasY = canvas.height / 2 + y - camera.y;
 
   // Draw ship
   context.save();
@@ -112,15 +126,30 @@ function renderPlayer(me: Player, player: Player, debug?: boolean) {
   context.restore();
 }
 
-function renderBomb(me: Player, bomb: Bomb) {
+function renderBomb(camera: Coord, bomb: Bomb) {
   const { x, y } = bomb;
   const radius = (bomb.exploded) ? BOMB_EXPLOSION_RADIUS : BOMB_RADIUS;
   context.drawImage(
     getAsset('bullet.svg'),
-    canvas.width / 2 + x - me.x - radius,
-    canvas.height / 2 + y - me.y - radius,
+    canvas.width / 2 + x - camera.x - radius,
+    canvas.height / 2 + y - camera.y - radius,
     radius * 2,
     radius * 2,
+  );
+}
+
+function renderBlock(camera: Coord, block: Block) {
+  const { x, y } = block;
+  if (block.destructable) {
+    context.fillStyle = '#57c200';
+  } else {
+    context.fillStyle = '#2a5e00';
+  }
+  context.fillRect(
+    canvas.width / 2 + x - camera.x - TILE_SIZE/2,
+    canvas.height / 2 + y - camera.y - TILE_SIZE/2,
+    TILE_SIZE,
+    TILE_SIZE,
   );
 }
 
