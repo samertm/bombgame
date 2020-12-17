@@ -1,6 +1,6 @@
 import { debounce } from 'throttle-debounce';
 import { getAsset } from './assets';
-import { ClientState, Player, Bomb, Block, Coord } from '../shared/types';
+import { ClientState, Player, Bomb, Block, Coord, Explosion } from '../shared/types';
 
 import {
   PLAYER_RADIUS,
@@ -9,6 +9,8 @@ import {
   BOMB_EXPLOSION_RADIUS,
   TILE_SIZE,
 } from '../shared/constants';
+
+import { tileToCoord } from '../shared/collisions';
 
 import { debugEnabled } from './debug';
 
@@ -28,7 +30,14 @@ export function renderGame(state?: ClientState) {
   if (!state) {
     return;
   }
-  const { me, debugServerMe, others, bombs, blocks } = state;
+  const {
+    me,
+    debugServerMe,
+    others,
+    bombs,
+    blocks,
+    explosions,
+  } = state;
   // The camera x/y is the center of the camera, relative to the grid.
   const camera = {
     x: MAP_SIZE / 2,
@@ -44,6 +53,11 @@ export function renderGame(state?: ClientState) {
   context.strokeRect(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y, MAP_SIZE, MAP_SIZE);
 
   renderGrid(camera);
+
+  // Draw explosions
+  for (const e of explosions) {
+    renderExplosion(camera, e);
+  }
 
   // Draw bombs
   for (const b of bombs) {
@@ -76,9 +90,9 @@ function renderGrid(camera: Coord) {
   for (let col = 0; col < Math.trunc(MAP_SIZE / TILE_SIZE); col++) {
     for (let row = 0; row < Math.trunc(MAP_SIZE / TILE_SIZE); row++) {
       if (dark) {
-        context.fillStyle = '#bf4000';
+        context.fillStyle = '#166b36';
       } else {
-        context.fillStyle = '#fc5603';
+        context.fillStyle = '#19803f';
       }
       dark = !dark;
       context.fillRect(
@@ -141,9 +155,9 @@ function renderBomb(camera: Coord, bomb: Bomb) {
 function renderBlock(camera: Coord, block: Block) {
   const { x, y } = block;
   if (block.destructable) {
-    context.fillStyle = '#57c200';
+    context.fillStyle = '#919191';
   } else {
-    context.fillStyle = '#2a5e00';
+    context.fillStyle = '#5e5e5e';
   }
   context.fillRect(
     canvas.width / 2 + x - camera.x - TILE_SIZE/2,
@@ -151,6 +165,19 @@ function renderBlock(camera: Coord, block: Block) {
     TILE_SIZE,
     TILE_SIZE,
   );
+}
+
+function renderExplosion(camera: Coord, explosion: Explosion) {
+  for (const t of explosion.tiles) {
+    const coord = tileToCoord(t);
+    context.fillStyle = '#eb4034';
+    context.fillRect(
+      canvas.width / 2 + coord.x - camera.x - TILE_SIZE/2,
+      canvas.height / 2 + coord.y - camera.y - TILE_SIZE/2,
+      TILE_SIZE,
+      TILE_SIZE,
+    );
+  }
 }
 
 export function renderMainMenu() {

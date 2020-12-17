@@ -33,6 +33,22 @@ export function coordToRectangle(c: Coord): Rectangle {
   };
 }
 
+export function tileToRectangle(t: Tile): Rectangle {
+  return {
+    left: t.col * TILE_SIZE,
+    right: t.col * TILE_SIZE + TILE_SIZE,
+    top: t.row * TILE_SIZE,
+    bottom: t.row * TILE_SIZE + TILE_SIZE,
+  };
+}
+
+export function rectangleCollision(rect1: Rectangle, rect2: Rectangle): boolean {
+  return rect1.left < rect2.right &&
+    rect1.right > rect2.left &&
+    rect1.top < rect2.bottom &&
+    rect1.bottom > rect2.top;
+}
+
 export function circleRectangleCollision(circle: Circle, rect: Rectangle): boolean {
   // Find the closest point to the circle within the rectangle.
   const closestX = clamp(circle.x, rect.left, rect.right);
@@ -68,4 +84,8 @@ export function tileToCoord(t: Tile): Coord {
     x: t.col * TILE_SIZE + (TILE_SIZE / 2),
     y: t.row * TILE_SIZE + (TILE_SIZE / 2),
   }
+}
+
+export function tileToKey(t: Tile): string {
+  return 'Tile:' + t.row + ',' + t.col;
 }

@@ -47,11 +47,16 @@ export interface SequencedPlayer extends Player {
   sequence: number;
 }
 
+export interface Explosion {
+  tiles: Tile[];
+}
+
 export interface State {
   me: SequencedPlayer;
   others: Player[];
   bombs: Bomb[];
   blocks: (Block | undefined)[][];
+  explosions: Explosion[];
 }
 
 export interface ClientState extends State {

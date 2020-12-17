@@ -1,4 +1,4 @@
-import { Update, SequencedDtMove, SequencedMove, Coord, SequencedPlayer, Player, Bomb, ClientState, Block } from '../shared/types';
+import { Update, SequencedDtMove, SequencedMove, Coord, SequencedPlayer, Player, Bomb, ClientState, Block, Explosion } from '../shared/types';
 import { movePlayer } from '../shared/player';
 import { distanceTo } from '../shared/collisions';
 import { getPlayerInterpolationRatio, shouldPrintClientServerPositionAndToggle } from './debug';
@@ -77,6 +77,7 @@ export function getState(now: number): ClientState | undefined {
     others: Player[];
     bombs: Bomb[];
     blocks: (Block | undefined)[][];
+    explosions: Explosion[];
   };
   if (gameUpdates.length === 1) {
     // Only one server update, so we can't interpolate.
@@ -84,6 +85,7 @@ export function getState(now: number): ClientState | undefined {
       others: gameUpdates[0].others,
       bombs: gameUpdates[0].bombs,
       blocks: gameUpdates[0].blocks,
+      explosions: gameUpdates[0].explosions,
     };
   } else {
     // More than one update, interpolate between them.
@@ -95,6 +97,7 @@ export function getState(now: number): ClientState | undefined {
       others: interpolatePlayers(baseUpdate.others, nextUpdate.others, ratio),
       bombs: interpolateBombs(baseUpdate.bombs, nextUpdate.bombs, ratio),
       blocks: baseUpdate.blocks,
+      explosions: baseUpdate.explosions,
     }
   }
 

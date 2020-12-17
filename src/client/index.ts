@@ -93,8 +93,10 @@ function startGameLoop(socket: typeof Socket) {
 
 function onGameOver() {
   stopCapturingInput();
-  playMenu.classList.remove('hidden');
-  gameState = 'menu';
+  setTimeout(() => {
+    playMenu.classList.remove('hidden');
+    gameState = 'menu';
+  }, 1000);
 }
 
 function onUpdate(update: Update) {

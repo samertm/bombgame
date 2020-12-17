@@ -9,7 +9,11 @@ export const BOMB_FUSE_TIME_MS = 2000;
 
 export const TILE_SIZE = 50;
 
-export const MAP_SIZE = TILE_SIZE * 15;
+export const NUM_TILES = 15;
+
+export const MAP_SIZE = TILE_SIZE * NUM_TILES;
+
+
 
 export const MSG_TYPES = {
   JOIN_GAME: 'join_game',

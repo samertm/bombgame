@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io';
-import { SequencedMove, Player, Bomb, Block } from '../shared/types';
+import { SequencedMove, Player, Bomb, Block, Explosion } from '../shared/types';
 import { tileToCoord } from '../shared/collisions';
 import { MAP_SIZE, TILE_SIZE } from '../shared/constants';
 import ServerPlayer from './ServerPlayer';
@@ -123,8 +123,13 @@ export default class Game {
         }
       }
 
+      const explosions: Explosion[] = [];
       for (const bomb of this.bombs) {
-        bomb.update(now, this.players);
+        const explosion = bomb.update(now, this.players, this.bombs, this.blocks);
+        if (explosion) {
+          this.forceUpdate = true;
+          explosions.push(explosion);
+        }
       }
 
       // Send update every other tick.
@@ -169,6 +174,7 @@ export default class Game {
             others: others,
             bombs: bombs,
             blocks: blocks,
+            explosions: explosions,
           });
         }
 

@@ -11,6 +11,10 @@ export default class ServerBlock {
     this.destructable = destructable;
   }
 
+  takeBombExplosion() {
+    return;
+  }
+
   serialize(): Block {
     return {
       x: this.x,
