@@ -1,10 +1,11 @@
-import { SequencedPlayer, Player, Move, Block } from './types';
+import { SequencedPlayer, Player, Move, Block, Tile } from './types';
 import { PLAYER_SPEED, PLAYER_RADIUS, MAP_SIZE } from './constants';
 import {
   playerToCircle,
   blockToRectangle,
   circleRectangleCollision,
   coordToTile,
+  Rectangle,
 } from './collisions';
 
 export function copySequencedPlayer(p: SequencedPlayer): SequencedPlayer {
@@ -16,34 +17,24 @@ export function copySequencedPlayer(p: SequencedPlayer): SequencedPlayer {
   };
 }
 
+function checkBlockCollision(player: Player, blocks: (Block | undefined)[][], tile: Tile): Rectangle | undefined {
+  const b = (blocks[tile.row]) ? blocks[tile.row][tile.col] : undefined;
+  if (!b) {
+    return;
+  }
+  const blockRect = blockToRectangle(b);
+  if (circleRectangleCollision(playerToCircle(player), blockRect)) {
+    return blockRect;
+  }
+  return;
+}
+
 export function movePlayer(player: Player, dt: number, move: Move, blocks: (Block | undefined)[][]) {
-  let playerTile = coordToTile(player);
   if (move.right && move.left) {
   } else if (move.right) {
     player.x += dt * PLAYER_SPEED;
-
-    // Check right collisions.
-    const b = (blocks[playerTile.row]) ?
-          blocks[playerTile.row][playerTile.col+1] : undefined;
-    if (b) {
-      const blockRect = blockToRectangle(b);
-      if (circleRectangleCollision(playerToCircle(player), blockRect)) {
-        player.x = blockRect.left - PLAYER_RADIUS;
-      }
-    }
-
   } else if (move.left) {
     player.x -= dt * PLAYER_SPEED;
-
-    // Check left collisions.
-    const b = (blocks[playerTile.row]) ?
-          blocks[playerTile.row][playerTile.col-1] : undefined;
-    if (b) {
-      const blockRect = blockToRectangle(b);
-      if (circleRectangleCollision(playerToCircle(player), blockRect)) {
-        player.x = blockRect.right + PLAYER_RADIUS;
-      }
-    }
   }
   if (player.x < PLAYER_RADIUS) {
     player.x = PLAYER_RADIUS;
@@ -51,38 +42,56 @@ export function movePlayer(player: Player, dt: number, move: Move, blocks: (Bloc
     player.x = MAP_SIZE - PLAYER_RADIUS;
   }
 
-  playerTile = coordToTile(player);
-
   if (move.up && move.down) {
   } else if (move.up) {
     player.y -= dt * PLAYER_SPEED;
-
-    // Check top collisions.
-    const b = (blocks[playerTile.row-1]) ?
-          blocks[playerTile.row-1][playerTile.col] : undefined;
-    if (b) {
-      const blockRect = blockToRectangle(b);
-      if (circleRectangleCollision(playerToCircle(player), blockRect)) {
-        player.y = blockRect.bottom + PLAYER_RADIUS;
-      }
-    }
   } else if (move.down) {
     player.y += dt * PLAYER_SPEED;
-
-    // Check bottom collision.
-    const b = (blocks[playerTile.row+1]) ?
-          blocks[playerTile.row+1][playerTile.col] : undefined;
-    if (b) {
-      const blockRect = blockToRectangle(b);
-      if (circleRectangleCollision(playerToCircle(player), blockRect)) {
-        player.y = blockRect.top - PLAYER_RADIUS;
-      }
-    }
   }
 
   if (player.y < PLAYER_RADIUS) {
     player.y = PLAYER_RADIUS;
   } else if (player.y > MAP_SIZE - PLAYER_RADIUS) {
     player.y = MAP_SIZE - PLAYER_RADIUS;
+  }
+
+  // Check collisions
+
+  const playerTile = coordToTile(player);
+
+  // Check right collisions (top right, right, bottom right).
+  for (const rowoffset of [-1, 0, 1]) {
+    const blockRect = checkBlockCollision(player, blocks, {
+      row: playerTile.row + rowoffset,
+      col: playerTile.col + 1,
+    });
+    if (blockRect) {
+      player.x = blockRect.left - PLAYER_RADIUS;
+      break;
+    }
+  }
+
+  // Check left collisions (top left, left, bottom left).
+  for (const rowoffset of [-1, 0, 1]) {
+    const blockRect = checkBlockCollision(player, blocks, {
+      row: playerTile.row + rowoffset,
+      col: playerTile.col - 1,
+    });
+    if (blockRect) {
+      player.x = blockRect.right + PLAYER_RADIUS;
+      break;
+    }
+  }
+
+  // Check top collision.
+  let blockRect = checkBlockCollision(player, blocks, {row: playerTile.row - 1, col: playerTile.col});
+  if (blockRect) {
+    player.y = blockRect.bottom + PLAYER_RADIUS;
+  }
+
+  // Check bottom collision.
+  blockRect = checkBlockCollision(player, blocks, {row: playerTile.row + 1, col: playerTile.col});
+  if (blockRect) {
+    player.y = blockRect.top - PLAYER_RADIUS;
   }
 }
