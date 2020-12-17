@@ -88,7 +88,15 @@ export function startCapturingInput() {
   window.addEventListener('keyup', keyUpHandler);
 }
 
-export function stopCapturingInput() {
+export function stopCapturingInputAndWipe() {
   window.removeEventListener('keydown', keyDownHandler);
   window.removeEventListener('keyup', keyUpHandler);
+  smove.sequence = 0;
+  smove.move = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    bomb: false,
+  };
 }

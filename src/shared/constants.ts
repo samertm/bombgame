@@ -1,3 +1,5 @@
+export const UPDATE_TICK_LENGTH_MS = 1000 / 60;
+
 export const PLAYER_RADIUS = 15;
 export const PLAYER_MAX_HP = 100;
 export const PLAYER_SPEED = 200;

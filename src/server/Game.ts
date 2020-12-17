@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
 import { SequencedMove, Player, Bomb, Block, Explosion } from '../shared/types';
 import { tileToCoord } from '../shared/collisions';
-import { MAP_SIZE, TILE_SIZE } from '../shared/constants';
+import { MAP_SIZE, TILE_SIZE, UPDATE_TICK_LENGTH_MS } from '../shared/constants';
 import ServerPlayer from './ServerPlayer';
 import ServerBomb from './ServerBomb';
 import ServerBlock from './ServerBlock';
@@ -11,8 +11,6 @@ import {
   sendGameOver,
 } from './networking';
 
-const tickLengthMs = 1000 / 60;
-
 export default class Game {
   sockets: {[id: string]: Socket};
   players: {[id: string]: ServerPlayer};
@@ -20,6 +18,7 @@ export default class Game {
   lastUpdateTime: number;
   tick: number;
   updateOnTick: number;
+  delta: number;
 
   forceUpdate: boolean;
 
@@ -34,6 +33,7 @@ export default class Game {
     this.tick = 0;
     this.updateOnTick = 6;
     this.forceUpdate = false;
+    this.delta = 0;
 
     // Create blocks grid.
     this.blocks = [];
@@ -110,29 +110,36 @@ export default class Game {
 
   update() {
     const now = performance.now();
-    if (this.lastUpdateTime + tickLengthMs <= now) {
-      const dt = (now - this.lastUpdateTime) / 1000;
+    if (this.lastUpdateTime + UPDATE_TICK_LENGTH_MS <= now) {
+      this.delta += now - this.lastUpdateTime;
       this.lastUpdateTime = now;
 
-      for (let socketid in this.sockets) {
-        const player = this.players[socketid];
-        const bombs = player.update(dt, now, this.blocks, this.bombs);
-        for (const b of bombs) {
-          this.bombs.push(b);
-          this.forceUpdate = true;
-        }
-      }
-
       const explosions: Explosion[] = [];
-      for (const bomb of this.bombs) {
-        const explosion = bomb.update(now, this.players, this.bombs, this.blocks);
-        if (explosion) {
-          this.forceUpdate = true;
-          explosions.push(explosion);
+      let numUpdateTicks = 0;
+      while (this.delta >= UPDATE_TICK_LENGTH_MS) {
+        numUpdateTicks++;
+        const dt = UPDATE_TICK_LENGTH_MS / 1000;
+        for (let socketid in this.sockets) {
+          const player = this.players[socketid];
+          const bombs = player.update(dt, now, this.blocks, this.bombs);
+          for (const b of bombs) {
+            this.bombs.push(b);
+            this.forceUpdate = true;
+          }
         }
+
+        for (const bomb of this.bombs) {
+          const explosion = bomb.update(now, this.players, this.bombs, this.blocks);
+          if (explosion) {
+            this.forceUpdate = true;
+            explosions.push(explosion);
+          }
+        }
+
+        this.delta -= UPDATE_TICK_LENGTH_MS;
       }
 
-      // Send update every other tick.
+      // Send update
       if (this.forceUpdate ||
           this.tick % this.updateOnTick === 0) {
         this.forceUpdate = false;
@@ -169,7 +176,7 @@ export default class Game {
 
           sendGameUpdate(socket, {
             t: now,
-            tickRate: Math.trunc(1/dt),
+            tickRate: Math.round(60/numUpdateTicks),
             me: player.serialize(),
             others: others,
             bombs: bombs,
@@ -201,7 +208,7 @@ export default class Game {
       this.tick++;
     }
 
-    if (performance.now() - this.lastUpdateTime < tickLengthMs - 16) {
+    if (performance.now() - this.lastUpdateTime < UPDATE_TICK_LENGTH_MS - 16) {
       setTimeout(this.update.bind(this));
     } else {
       setImmediate(this.update.bind(this));
