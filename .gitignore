@@ -1,8 +1,9 @@
-.eslintcache
-dist
-node_modules
+/.eslintcache
+/dist
+/node_modules
 .DS_Store
-push
-tsout
-start
-stop
+/push
+/tsout
+/start
+/stop
+/status
