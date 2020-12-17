@@ -40,7 +40,7 @@ export default class ServerPlayer {
     }
   }
 
-  update(dt: number, now: number, blocks: (Block | undefined)[][]): ServerBomb[] {
+  update(dt: number, now: number, blocks: (Block | undefined)[][], bombs: ServerBomb[]): ServerBomb[] {
     if (!this.alive) {
       return[];
     }
@@ -62,7 +62,7 @@ export default class ServerPlayer {
       if (sm.move.bomb) {
         triggeredBomb = true;
       }
-      movePlayer(this, dt/seqmoves.length, sm.move, blocks);
+      movePlayer(this, dt/seqmoves.length, sm.move, blocks, bombs);
       this.lastMove = sm;
       this.lastMoveTs = now;
     }

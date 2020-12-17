@@ -1,8 +1,8 @@
-import { SequencedPlayer, Player, Move, Block, Tile } from './types';
+import { SequencedPlayer, Player, Move, Block, Bomb, Tile } from './types';
 import { PLAYER_SPEED, PLAYER_RADIUS, MAP_SIZE } from './constants';
 import {
   playerToCircle,
-  blockToRectangle,
+  coordToRectangle,
   circleRectangleCollision,
   coordToTile,
   Rectangle,
@@ -22,14 +22,26 @@ function checkBlockCollision(player: Player, blocks: (Block | undefined)[][], ti
   if (!b) {
     return;
   }
-  const blockRect = blockToRectangle(b);
+  const blockRect = coordToRectangle(b);
   if (circleRectangleCollision(playerToCircle(player), blockRect)) {
     return blockRect;
   }
   return;
 }
 
-export function movePlayer(player: Player, dt: number, move: Move, blocks: (Block | undefined)[][]) {
+function checkBombCollision(player: Player, bombs: Bomb[]): Bomb | undefined {
+  for (const b of bombs) {
+    if (circleRectangleCollision(playerToCircle(player), coordToRectangle(b))) {
+      return b;
+    }
+  }
+  return;
+}
+
+export function movePlayer(player: Player, dt: number, move: Move, blocks: (Block | undefined)[][], bombs: Bomb[]) {
+  // Ignore any bombs we're currently colliding with.
+  let ignoreBomb = checkBombCollision(player, bombs);
+
   if (move.right && move.left) {
   } else if (move.right) {
     player.x += dt * PLAYER_SPEED;
@@ -93,5 +105,44 @@ export function movePlayer(player: Player, dt: number, move: Move, blocks: (Bloc
   blockRect = checkBlockCollision(player, blocks, {row: playerTile.row + 1, col: playerTile.col});
   if (blockRect) {
     player.y = blockRect.top - PLAYER_RADIUS;
+  }
+
+  // Check bomb collision.
+  let bomb = checkBombCollision(player, bombs);
+  if (bomb && !(ignoreBomb && ignoreBomb.id === bomb.id)) {
+    const bombRect = coordToRectangle(bomb);
+    if (
+      player.x + PLAYER_RADIUS > bombRect.left &&
+        player.x + PLAYER_RADIUS < bombRect.right &&
+        player.y > bombRect.top &&
+        player.y < bombRect.bottom
+    ) {
+
+      player.x = bombRect.left - PLAYER_RADIUS;
+    } else if (
+      player.x - PLAYER_RADIUS < bombRect.right &&
+        player.x - PLAYER_RADIUS > bombRect.left &&
+        player.y > bombRect.top &&
+        player.y < bombRect.bottom
+    ) {
+
+      player.x = bombRect.right + PLAYER_RADIUS;
+    } else if (
+      player.y - PLAYER_RADIUS < bombRect.bottom &&
+        player.y - PLAYER_RADIUS > bombRect.top &&
+        player.x > bombRect.left &&
+        player.x < bombRect.right
+    ) {
+
+      player.y = bombRect.bottom + PLAYER_RADIUS;
+    } else if (
+      player.y + PLAYER_RADIUS > bombRect.top &&
+        player.y + PLAYER_RADIUS < bombRect.bottom &&
+        player.x > bombRect.left &&
+        player.x < bombRect.right
+    ) {
+
+      player.y = bombRect.top - PLAYER_RADIUS;
+    }
   }
 }

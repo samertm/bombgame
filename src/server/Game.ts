@@ -116,7 +116,7 @@ export default class Game {
 
       for (let socketid in this.sockets) {
         const player = this.players[socketid];
-        const bombs = player.update(dt, now, this.blocks);
+        const bombs = player.update(dt, now, this.blocks, this.bombs);
         for (const b of bombs) {
           this.bombs.push(b);
           this.forceUpdate = true;

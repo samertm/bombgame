@@ -127,7 +127,7 @@ export function getState(now: number): ClientState | undefined {
     }
   }
 
-  let mostUpToDateLocalMoveIndex = applyLocalMoves(player, entities.blocks);
+  let mostUpToDateLocalMoveIndex = applyLocalMoves(player, entities.blocks, entities.bombs);
 
   // Remove all states up to the most recent local move.
   if (mostUpToDateLocalMoveIndex !== undefined) {
@@ -146,7 +146,7 @@ export function getState(now: number): ClientState | undefined {
   };
 }
 
-function applyLocalMoves(player: SequencedPlayer, blocks: (Block | undefined)[][]): number | undefined {
+function applyLocalMoves(player: SequencedPlayer, blocks: (Block | undefined)[][], bombs: Bomb[]): number | undefined {
   let mostUpToDateLocalMoveIndex: number | undefined;
   for (let i = 0; i < localMoves.length; i++) {
     const sm = localMoves[i];
@@ -159,7 +159,7 @@ function applyLocalMoves(player: SequencedPlayer, blocks: (Block | undefined)[][
       mostUpToDateLocalMoveIndex = i;
       continue;
     }
-    movePlayer(player, sm.dt, sm.move, blocks);
+    movePlayer(player, sm.dt, sm.move, blocks, bombs);
     previousPlayerCoord[sm.sequence] = {x: player.x, y: player.y};
   }
   return mostUpToDateLocalMoveIndex;

@@ -1,5 +1,5 @@
 import { MAP_SIZE, TILE_SIZE, PLAYER_RADIUS } from './constants';
-import { Coord, Tile, Player, Block } from '../shared/types';
+import { Coord, Tile, Player } from '../shared/types';
 
 export interface Circle extends Coord {
   radius: number,
@@ -24,12 +24,12 @@ export function playerToCircle(p: Player): Circle {
   };
 }
 
-export function blockToRectangle(b: Block): Rectangle {
+export function coordToRectangle(c: Coord): Rectangle {
   return {
-    left: b.x - (TILE_SIZE / 2),
-    right: b.x + (TILE_SIZE / 2),
-    top: b.y - (TILE_SIZE / 2),
-    bottom: b.y + (TILE_SIZE / 2),
+    left: c.x - (TILE_SIZE / 2),
+    right: c.x + (TILE_SIZE / 2),
+    top: c.y - (TILE_SIZE / 2),
+    bottom: c.y + (TILE_SIZE / 2),
   };
 }
 
