@@ -1,6 +1,6 @@
 import { debounce } from 'throttle-debounce';
 import { getAsset } from './assets';
-import { ClientState, Player, Bomb, Block, Coord, Explosion } from '../shared/types';
+import { ClientState, Player, Bomb, Block, Coord, Explosion, Powerup } from '../shared/types';
 
 import {
   PLAYER_RADIUS,
@@ -8,6 +8,7 @@ import {
   BOMB_RADIUS,
   BOMB_EXPLOSION_RADIUS,
   TILE_SIZE,
+  POWERUP_RADIUS,
 } from '../shared/constants';
 
 import { tileToCoord } from '../shared/collisions';
@@ -37,6 +38,7 @@ export function renderGame(state?: ClientState) {
     bombs,
     blocks,
     explosions,
+    powerups,
   } = state;
   // The camera x/y is the center of the camera, relative to the grid.
   const camera = {
@@ -71,6 +73,11 @@ export function renderGame(state?: ClientState) {
         renderBlock(camera, bl);
       }
     }
+  }
+
+  // Draw powerups
+  for (const p of powerups) {
+    renderPowerup(camera, p);
   }
 
   // Draw all players
@@ -183,6 +190,29 @@ function renderExplosion(camera: Coord, explosion: Explosion) {
       TILE_SIZE,
     );
   }
+}
+
+function renderPowerup(camera: Coord, powerup: Powerup) {
+  context.beginPath();
+  context.arc(
+    canvas.width / 2 + powerup.x - camera.x,
+    canvas.height / 2 + powerup.y - camera.y,
+    POWERUP_RADIUS,
+    0,
+    2 * Math.PI,
+    false,
+  );
+  if (powerup.destroyed) {
+    context.fillStyle = '#f27e7e';
+  } else if (powerup.powerupType === 'bombsize') {
+    context.fillStyle = 'green';
+  } else if (powerup.powerupType === 'numbombs') {
+    context.fillStyle = 'yellow';
+  }
+  context.fill();
+  context.lineWidth = 5;
+  context.strokeStyle = '#003300';
+  context.stroke();
 }
 
 export function renderMainMenu() {

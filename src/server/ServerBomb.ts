@@ -1,5 +1,6 @@
 import ServerPlayer from './ServerPlayer';
 import ServerBlock from './ServerBlock';
+import ServerPowerup from './ServerPowerup';
 import { Bomb, Tile } from '../shared/types';
 import { NUM_TILES } from '../shared/constants';
 import { coordToTile, tileToCoord, circleRectangleCollision, playerToCircle, tileToRectangle, rectangleCollision, tileToKey, coordToRectangle } from '../shared/collisions';
@@ -31,7 +32,17 @@ export default class ServerBomb {
     return rectangleCollision(coordToRectangle(this), coordToRectangle(bomb));
   }
 
-  update(now: number, players: {[id: string]: ServerPlayer}, bombs: ServerBomb[], blocks: (ServerBlock | undefined)[][]): ServerExplosion | undefined {
+  update(
+    now: number,
+    players: {[id: string]: ServerPlayer},
+    bombs: ServerBomb[],
+    blocks: (ServerBlock | undefined)[][],
+    powerups: ServerPowerup[],
+  ): {
+    explosion: ServerExplosion,
+    powerups: ServerPowerup[],
+  } | undefined {
+
     if (this.exploded) {
       return;
     }
@@ -44,6 +55,7 @@ export default class ServerBomb {
       parent.decrementBombsPlaced();
     }
     const tilesExploded: Tile[] = [];
+    const newPowerups: ServerPowerup[] = [];
 
     const seen: {[tileKey: string]: boolean} = {};
     const first = coordToTile(this);
@@ -61,7 +73,10 @@ export default class ServerBomb {
       }
       const block = blocks[t.row][t.col];
       if (block) {
-        block.takeBombExplosion();
+        const powerup = block.takeBombExplosion();
+        if (powerup) {
+          newPowerups.push(powerup);
+        }
         continue;
       }
       const tileRect = tileToRectangle(t);
@@ -77,6 +92,11 @@ export default class ServerBomb {
         }
         if (rectangleCollision(tileRect, coordToRectangle(bomb))) {
           bomb.takeBombExplosion(now);
+        }
+      }
+      for (const powerup of powerups) {
+        if (circleRectangleCollision(powerup.circle(), tileRect)) {
+          powerup.takeBombExplosion();
         }
       }
 
@@ -98,7 +118,10 @@ export default class ServerBomb {
       }
     }
 
-    return new ServerExplosion(tilesExploded);
+    return {
+      explosion: new ServerExplosion(tilesExploded),
+      powerups: newPowerups,
+    };
   }
 
   takeBombExplosion(hitTime: number) {

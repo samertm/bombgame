@@ -1,10 +1,11 @@
 import { Socket } from 'socket.io';
-import { SequencedMove, Player, Bomb, Block, Explosion } from '../shared/types';
+import { SequencedMove, Player, Bomb, Block, Explosion, PowerupType, Powerup } from '../shared/types';
 import { tileToCoord, randomTile } from '../shared/collisions';
-import { MAP_SIZE, TILE_SIZE, UPDATE_TICK_LENGTH_MS } from '../shared/constants';
+import { MAP_SIZE, TILE_SIZE, UPDATE_TICK_LENGTH_MS, POWERUP_ODDS } from '../shared/constants';
 import ServerPlayer from './ServerPlayer';
 import ServerBomb from './ServerBomb';
 import ServerBlock from './ServerBlock';
+import ServerPowerup from './ServerPowerup';
 import { performance } from 'perf_hooks';
 import {
   sendGameUpdate,
@@ -24,6 +25,7 @@ export default class Game {
 
   // 2D grid. First index is col, second is row.
   blocks: (ServerBlock | undefined)[][];
+  powerups: ServerPowerup[];
 
   constructor() {
     this.sockets = {};
@@ -35,9 +37,12 @@ export default class Game {
     this.forceUpdate = false;
     this.delta = 0;
     this.blocks = [];
+    this.powerups = [];
   }
 
   initializeGame() {
+    this.powerups = [];
+    this.bombs = [];
     // Create blocks grid.
     this.blocks = [];
     for (let i = 0; i < MAP_SIZE/TILE_SIZE; i++) {
@@ -79,7 +84,15 @@ export default class Game {
         continue;
       }
       const {x, y} = tileToCoord(t);
-      this.blocks[t.row][t.col] = new ServerBlock(x, y, true);
+      let powerupType: PowerupType | undefined;
+      if (Math.random() > POWERUP_ODDS) {
+        if (Math.random() > 0.5) {
+          powerupType = 'bombsize';
+        } else {
+          powerupType = 'numbombs';
+        }
+      }
+      this.blocks[t.row][t.col] = new ServerBlock(x, y, true, powerupType);
       placed++;
     }
   }
@@ -151,7 +164,7 @@ export default class Game {
           if (!player) {
             continue;
           }
-          const bombs = player.update(dt, now, this.blocks, this.bombs);
+          const bombs = player.update(dt, now, this.blocks, this.bombs, this.powerups);
           for (const b of bombs) {
             this.bombs.push(b);
             this.forceUpdate = true;
@@ -159,10 +172,20 @@ export default class Game {
         }
 
         for (const bomb of this.bombs) {
-          const explosion = bomb.update(now, this.players, this.bombs, this.blocks);
+          const result = bomb.update(
+            now, this.players, this.bombs, this.blocks, this.powerups);
+          if (!result) {
+            continue;
+          }
+          const {explosion, powerups} = result;
           if (explosion) {
             this.forceUpdate = true;
             explosions.push(explosion);
+          }
+          if (powerups) {
+            for (const p of powerups) {
+              this.powerups.push(p);
+            }
           }
         }
 
@@ -192,6 +215,11 @@ export default class Game {
           blocks.push(serializedrow);
         }
 
+        const powerups: Powerup[] = [];
+        for (const p of this.powerups) {
+          powerups.push(p.serialize());
+        }
+
         for (let socketid in this.sockets) {
           const socket = this.sockets[socketid];
 
@@ -212,10 +240,11 @@ export default class Game {
             bombs: bombs,
             blocks: blocks,
             explosions: explosions,
+            powerups: powerups,
           });
         }
 
-        // Clean up bombs, players, blocks.
+        // Clean up entities.
         for (const id in this.players) {
           const p = this.players[id];
           if (p.alive) {
@@ -241,6 +270,14 @@ export default class Game {
             }
           }
         }
+
+        const livePowerups = [];
+        for (const p of this.powerups) {
+          if (!p.destroyed && !p.used) {
+            livePowerups.push(p);
+          }
+        }
+        this.powerups = livePowerups;
       }
       this.tick++;
     }

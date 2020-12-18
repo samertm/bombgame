@@ -52,12 +52,21 @@ export interface Explosion {
   tiles: Tile[];
 }
 
+export type PowerupType = 'bombsize' |
+  'numbombs';
+
+export interface Powerup extends Coord {
+  powerupType: PowerupType;
+  destroyed: boolean;
+}
+
 export interface State {
   me?: SequencedPlayer;
   others: Player[];
   bombs: Bomb[];
   blocks: (Block | undefined)[][];
   explosions: Explosion[];
+  powerups: Powerup[];
 }
 
 export interface ClientState extends State {

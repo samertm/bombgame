@@ -15,6 +15,8 @@ export const NUM_TILES = 15;
 
 export const MAP_SIZE = TILE_SIZE * NUM_TILES;
 
+export const POWERUP_RADIUS = 15;
+export const POWERUP_ODDS = 0.5;
 
 
 export const MSG_TYPES = {

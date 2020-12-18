@@ -1,6 +1,8 @@
 import { SequencedMove, SequencedPlayer, Block } from '../shared/types';
 import { BOMB_FUSE_TIME_MS, TILE_SIZE, PLAYER_SPEED } from '../shared/constants';
 import { movePlayer } from '../shared/player';
+import { circleCollision, playerToCircle } from '../shared/collisions';
+import ServerPowerup from './ServerPowerup';
 import ServerBomb from './ServerBomb';
 
 const LAST_MOVE_DISCARDED_AFTER_MS = 50;
@@ -59,7 +61,13 @@ export default class ServerPlayer {
     }
   }
 
-  update(dt: number, now: number, blocks: (Block | undefined)[][], bombs: ServerBomb[]): ServerBomb[] {
+  update(
+    dt: number,
+    now: number,
+    blocks: (Block | undefined)[][],
+    bombs: ServerBomb[],
+    powerups: ServerPowerup[],
+  ): ServerBomb[] {
     if (!this.alive) {
       return[];
     }
@@ -103,6 +111,18 @@ export default class ServerPlayer {
           this.bombsPlaced++;
           this.bombCooldownOverAt = now + bombCooldownMs();
           placedBombs.push(potentialBomb);
+        }
+      }
+      for (const p of powerups) {
+        if (!p.used && !p.destroyed && circleCollision(p.circle(), playerToCircle(this))) {
+          p.touchedByPlayer();
+          if (p.powerupType === 'numbombs') {
+            this.maxBombs++;
+          } else if (p.powerupType === 'bombsize') {
+            this.bombExplosionSize++;
+          } else {
+            throw Error("Powerup type not implemented: " + p.powerupType);
+          }
         }
       }
 

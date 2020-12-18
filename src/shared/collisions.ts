@@ -65,6 +65,11 @@ export function circleRectangleCollision(circle: Circle, rect: Rectangle): boole
   return distanceSquared < (circle.radius*circle.radius);
 }
 
+export function circleCollision(circle1: Circle, circle2: Circle): boolean {
+  const dist = distanceTo(circle1, circle2);
+  return dist < circle1.radius + circle2.radius;
+}
+
 export function distanceTo(c1: Coord, c2: Coord): number {
   const dx = c1.x - c2.x;
   const dy = c1.y - c2.y;
