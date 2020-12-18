@@ -107,8 +107,8 @@ export default class Game {
   }
 
   removeSocket(socket: Socket) {
-    delete this.sockets[socket.id];
     this.removePlayer(socket);
+    delete this.sockets[socket.id];
   }
 
   addPlayer(socket: Socket, username: string) {
@@ -130,7 +130,7 @@ export default class Game {
   }
 
   removePlayer(socket: Socket) {
-    if (socket.id in this.players) {
+    if (this.players[socket.id]) {
       sendGameOver(this.sockets[socket.id]);
       delete this.players[socket.id];
     }
