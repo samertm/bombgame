@@ -33,6 +33,10 @@ function addGameOverListener(socket: typeof Socket, onGameOver: () => void) {
   socket.on(MSG_TYPES.GAME_OVER, onGameOver);
 }
 
+export function sendViewGame(socket: typeof Socket) {
+  socket.emit(MSG_TYPES.VIEW_GAME);
+}
+
 export function sendJoinGame(socket: typeof Socket, username: string) {
   socket.emit(MSG_TYPES.JOIN_GAME, username);
 }

@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io-client';
-import { connect, sendJoinGame, sendInput } from './networking';
+import { connect, sendViewGame, sendJoinGame, sendInput } from './networking';
 import { downloadAssets } from './assets';
-import { renderMainMenu, renderGame } from './render';
+import { renderGame } from './render';
 import { getAndWipeMoveBuffer, startCapturingInput, stopCapturingInputAndWipe } from './input';
 import State from './state';
 import { Update } from '../shared/types';
@@ -34,8 +34,9 @@ class Game {
     this.delta = 0;
   }
 
-  setSocket(socket: typeof Socket) {
+  setSocketAndSpectate(socket: typeof Socket) {
     this.socket = socket;
+    sendViewGame(socket);
   }
 
   onUpdate = (update: Update) => {
@@ -60,20 +61,24 @@ class Game {
       playButton.onclick = () => {
         this.mode = 'entergame';
       };
+      this.state = new State();
       this.mode = 'menu';
     }
     if (this.mode === 'menu') {
-      renderMainMenu();
-      return;
+      // TODO
     }
     if (this.mode === 'entergame') {
       this.state = new State();
+      this.receivedUpdates = [];
       sendJoinGame(socket, usernameInput.value);
       playMenu.classList.add('hidden');
       startCapturingInput();
       this.mode = 'game';
       this.delta = 0;
     }
+
+    // this.mode is either 'menu' or 'game' at this point.
+
     if (this.lastUpdateTime === undefined) {
       this.lastUpdateTime = ts;
     }
@@ -104,9 +109,10 @@ class Game {
       state.processLocalMoves(moves);
     }
     if (this.receivedUpdates.length !== 0) {
-      if (debugEnabled()) {
-        serverTickRateDiv.innerText = 'Server Tick Rate: ' + this.receivedUpdates[this.receivedUpdates.length-1].tickRate;
-        const originalTs = this.debugClientSequences[this.receivedUpdates[this.receivedUpdates.length - 1].me.sequence];
+      const lastUpdate = this.receivedUpdates[this.receivedUpdates.length - 1];
+      if (debugEnabled() && lastUpdate.me) {
+        serverTickRateDiv.innerText = 'Server Tick Rate: ' + lastUpdate.tickRate;
+        const originalTs = this.debugClientSequences[lastUpdate.me.sequence];
         if (originalTs !== undefined) {
           latencyDiv.innerText = 'Latency: ' + Math.trunc(ts - originalTs);
           this.debugClientSequences = {};
@@ -150,7 +156,7 @@ function main() {
     downloadAssets(),
   ]).then((args) => {
     const socket: typeof Socket = args[0];
-    game.setSocket(socket);
+    game.setSocketAndSpectate(socket);
 
     game.startGameLoop();
   }).catch(console.error);

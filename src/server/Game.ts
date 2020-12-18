@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io';
 import { SequencedMove, Player, Bomb, Block, Explosion } from '../shared/types';
-import { tileToCoord } from '../shared/collisions';
+import { tileToCoord, randomTile } from '../shared/collisions';
 import { MAP_SIZE, TILE_SIZE, UPDATE_TICK_LENGTH_MS } from '../shared/constants';
 import ServerPlayer from './ServerPlayer';
 import ServerBomb from './ServerBomb';
@@ -34,7 +34,10 @@ export default class Game {
     this.updateOnTick = 6;
     this.forceUpdate = false;
     this.delta = 0;
+    this.blocks = [];
+  }
 
+  initializeGame() {
     // Create blocks grid.
     this.blocks = [];
     for (let i = 0; i < MAP_SIZE/TILE_SIZE; i++) {
@@ -42,9 +45,7 @@ export default class Game {
       inner.length = MAP_SIZE/TILE_SIZE;
       this.blocks.push(inner);
     }
-  }
 
-  initializeGame() {
     // Place indestructable blocks
     let skiprow = false;
     for (let i = 1; i < MAP_SIZE / TILE_SIZE - 1; i++) {
@@ -68,6 +69,19 @@ export default class Game {
         );
       }
     }
+
+    // Now place destructable blocks randomly.
+    const numDestructableBlocks = 60;
+    let placed = 0;
+    while (placed < numDestructableBlocks) {
+      const t = randomTile();
+      if (this.blocks[t.row][t.col]) {
+        continue;
+      }
+      const {x, y} = tileToCoord(t);
+      this.blocks[t.row][t.col] = new ServerBlock(x, y, true);
+      placed++;
+    }
   }
 
   startUpdate() {
@@ -75,13 +89,21 @@ export default class Game {
     this.update();
   }
 
+  addSpectator(socket: Socket) {
+    this.sockets[socket.id] = socket;
+  }
+
+  removeSocket(socket: Socket) {
+    delete this.sockets[socket.id];
+    this.removePlayer(socket);
+  }
+
   addPlayer(socket: Socket, username: string) {
     this.sockets[socket.id] = socket;
 
     let found = false
     while (!found) {
-      const col = Math.trunc(Math.random() * (MAP_SIZE/TILE_SIZE - 1));
-      const row = Math.trunc(Math.random() * (MAP_SIZE/TILE_SIZE - 1));
+      const {row, col} = randomTile();
       if (this.blocks[row][col]) {
         continue;
       }
@@ -95,9 +117,14 @@ export default class Game {
   }
 
   removePlayer(socket: Socket) {
-    delete this.sockets[socket.id];
-    delete this.players[socket.id];
-    this.forceUpdate = true;
+    if (socket.id in this.players) {
+      sendGameOver(this.sockets[socket.id]);
+      delete this.players[socket.id];
+    }
+    if (Object.keys(this.players).length === 0) {
+      // Reset game.
+      this.initializeGame();
+    }
   }
 
   handleInput(socket: Socket, input: SequencedMove[]) {
@@ -121,6 +148,9 @@ export default class Game {
         const dt = UPDATE_TICK_LENGTH_MS / 1000;
         for (let socketid in this.sockets) {
           const player = this.players[socketid];
+          if (!player) {
+            continue;
+          }
           const bombs = player.update(dt, now, this.blocks, this.bombs);
           for (const b of bombs) {
             this.bombs.push(b);
@@ -164,7 +194,6 @@ export default class Game {
 
         for (let socketid in this.sockets) {
           const socket = this.sockets[socketid];
-          const player = this.players[socketid];
 
           const others: Player[] = [];
           for (const id in this.players) {
@@ -177,7 +206,8 @@ export default class Game {
           sendGameUpdate(socket, {
             t: now,
             tickRate: Math.round(60/numUpdateTicks),
-            me: player.serialize(),
+            me: (socketid in this.players) ?
+              this.players[socketid].serialize() : undefined,
             others: others,
             bombs: bombs,
             blocks: blocks,
@@ -185,16 +215,14 @@ export default class Game {
           });
         }
 
-        // Clean up exploded bombs and dead players.
+        // Clean up bombs, players, blocks.
         for (const id in this.players) {
           const p = this.players[id];
           if (p.alive) {
             continue;
           }
           // The player is dead.
-          sendGameOver(this.sockets[id]);
-          delete this.sockets[id];
-          delete this.players[id];
+          this.removePlayer(this.sockets[id]);
         }
 
         const liveBombs = [];
@@ -204,6 +232,15 @@ export default class Game {
           }
         }
         this.bombs = liveBombs;
+
+        for (let i = 0; i < this.blocks.length; i++) {
+          for (let j = 0; j < this.blocks[i].length; j++) {
+            const block = this.blocks[i][j];
+            if (block && block.destroyed) {
+              this.blocks[i][j] = undefined;
+            }
+          }
+        }
       }
       this.tick++;
     }

@@ -50,7 +50,7 @@ export default class ServerBomb {
           t.col < 0 || t.col > NUM_TILES - 1 || Math.abs(first.col - t.col) > this.size) {
         continue;
       }
-      const block = blocks[t.col][t.row];
+      const block = blocks[t.row][t.col];
       if (block) {
         block.takeBombExplosion();
         continue;

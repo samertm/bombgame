@@ -108,6 +108,14 @@ export default class State {
 
     const latestServerUpdate = this.gameUpdates[this.gameUpdates.length - 1];
 
+    // No player, which means we're spectating.
+    if (!latestServerUpdate.me) {
+      this.clientState = {
+        ...entities,
+      };
+      return;
+    }
+
     // Update the player location.
     // Copy the latest server update so we can modify the player.
     let player: SequencedPlayer = {

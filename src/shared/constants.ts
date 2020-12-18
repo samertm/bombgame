@@ -18,6 +18,7 @@ export const MAP_SIZE = TILE_SIZE * NUM_TILES;
 
 
 export const MSG_TYPES = {
+  VIEW_GAME: 'view_game',
   JOIN_GAME: 'join_game',
   GAME_UPDATE: 'update',
   INPUT: 'input',

@@ -41,6 +41,7 @@ export interface Player {
 
 export interface Block extends Coord {
   destructable: boolean;
+  destroyed: boolean;
 }
 
 export interface SequencedPlayer extends Player {
@@ -52,7 +53,7 @@ export interface Explosion {
 }
 
 export interface State {
-  me: SequencedPlayer;
+  me?: SequencedPlayer;
   others: Player[];
   bombs: Bomb[];
   blocks: (Block | undefined)[][];
@@ -60,7 +61,7 @@ export interface State {
 }
 
 export interface ClientState extends State {
-  debugServerMe: SequencedPlayer;
+  debugServerMe?: SequencedPlayer;
 }
 
 export interface Update extends State {

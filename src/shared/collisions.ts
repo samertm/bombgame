@@ -89,3 +89,10 @@ export function tileToCoord(t: Tile): Coord {
 export function tileToKey(t: Tile): string {
   return 'Tile:' + t.row + ',' + t.col;
 }
+
+export function randomTile() {
+  return {
+    row: Math.trunc(Math.random() * (MAP_SIZE/TILE_SIZE - 1)),
+    col: Math.trunc(Math.random() * (MAP_SIZE/TILE_SIZE - 1)),
+  };
+}

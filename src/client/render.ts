@@ -74,10 +74,12 @@ export function renderGame(state?: ClientState) {
   }
 
   // Draw all players
-  if (debugEnabled()) {
+  if (debugEnabled() && debugServerMe) {
     renderPlayer(camera, debugServerMe, true);
   }
-  renderPlayer(camera, me);
+  if (me) {
+    renderPlayer(camera, me);
+  }
   for (const other of others) {
     renderPlayer(camera, other);
   }
@@ -158,6 +160,9 @@ function renderBlock(camera: Coord, block: Block) {
     context.fillStyle = '#919191';
   } else {
     context.fillStyle = '#5e5e5e';
+  }
+  if (block.destroyed) {
+    context.fillStyle = '#f27e7e';
   }
   context.fillRect(
     canvas.width / 2 + x - camera.x - TILE_SIZE/2,

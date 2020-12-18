@@ -32,6 +32,9 @@ game.startUpdate();
 io.on('connection', (socket: Socket) => {
   console.log('Player connected!', socket.id);
 
+  socket.on(constants.MSG_TYPES.VIEW_GAME, () => {
+    game.addSpectator(socket);
+  });
   socket.on(constants.MSG_TYPES.JOIN_GAME, (username: string) => {
     game.addPlayer(socket, username);
   });
@@ -40,6 +43,6 @@ io.on('connection', (socket: Socket) => {
   });
   socket.on('disconnect', () => {
     console.log("Removing player", socket.id);
-    game.removePlayer(socket);
+    game.removeSocket(socket);
   });
 });
