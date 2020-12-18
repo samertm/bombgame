@@ -71,7 +71,7 @@ export default class Game {
     }
 
     // Now place destructable blocks randomly.
-    const numDestructableBlocks = 60;
+    const numDestructableBlocks = 75;
     let placed = 0;
     while (placed < numDestructableBlocks) {
       const t = randomTile();

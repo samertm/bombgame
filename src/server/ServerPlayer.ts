@@ -1,9 +1,17 @@
 import { SequencedMove, SequencedPlayer, Block } from '../shared/types';
-import { BOMB_FUSE_TIME_MS } from '../shared/constants';
+import { BOMB_FUSE_TIME_MS, TILE_SIZE, PLAYER_SPEED } from '../shared/constants';
 import { movePlayer } from '../shared/player';
 import ServerBomb from './ServerBomb';
 
 const LAST_MOVE_DISCARDED_AFTER_MS = 50;
+
+// Use the bomb cooldown to prevent double-bombing. Calculate it as a
+// little under how long it takes to walk across one tile.
+function bombCooldownMs(): number {
+  const timeToWalkOneTileSec = TILE_SIZE/PLAYER_SPEED;
+  return timeToWalkOneTileSec * 0.8 * 1000
+}
+
 
 export default class ServerPlayer {
   id: string;
@@ -14,9 +22,11 @@ export default class ServerPlayer {
   lastMove?: SequencedMove;
   lastMoveTs?: number;
   alive: boolean;
+  bombsPlaced: number;
+  maxBombs: number;
+  bombExplosionSize: number;
 
-  bombCooldownMs: number;
-  nextBombAvailable: number;
+  bombCooldownOverAt: number;
 
   constructor(id: string, username: string, x: number, y: number) {
     this.id = id;
@@ -26,12 +36,21 @@ export default class ServerPlayer {
     this.seqmoves = [];
     this.alive = true;
 
-    this.bombCooldownMs = 1000;
-    this.nextBombAvailable = 0;
+    this.bombsPlaced = 0;
+    this.maxBombs = 2;
+    this.bombExplosionSize = 4;
+    this.bombCooldownOverAt = 0;
   }
 
   takeBombExplosion() {
     this.alive = false;
+  }
+
+  decrementBombsPlaced() {
+    this.bombsPlaced--;
+    if (this.bombsPlaced < 0) {
+      this.bombsPlaced = 0;
+    }
   }
 
   addSequencedMoves(seqmoves: SequencedMove[]) {
@@ -56,23 +75,43 @@ export default class ServerPlayer {
       seqmoves = [this.lastMove];
     }
 
-    let triggeredBomb = false;
+    const placedBombs: ServerBomb[] = [];
 
     for (const sm of seqmoves) {
-      if (sm.move.bomb) {
-        triggeredBomb = true;
-      }
       movePlayer(this, dt/seqmoves.length, sm.move, blocks, bombs);
+      if (sm.move.bomb &&
+          now >= this.bombCooldownOverAt &&
+          this.bombsPlaced < this.maxBombs) {
+        // Check for collisions against other bombs.
+        const potentialBomb = new ServerBomb(this.x, this.y, now + BOMB_FUSE_TIME_MS, this.bombExplosionSize, this.id);
+        let collision = false;
+        for (const bomb of bombs) {
+          if (potentialBomb.collidesWithBomb(bomb)) {
+            collision = true;
+            break;
+          }
+        }
+        if (!collision) {
+          for (const bomb of placedBombs) {
+            if (potentialBomb.collidesWithBomb(bomb)) {
+              collision = true;
+              break;
+            }
+          }
+        }
+        if (!collision) {
+          this.bombsPlaced++;
+          this.bombCooldownOverAt = now + bombCooldownMs();
+          placedBombs.push(potentialBomb);
+        }
+      }
+
       this.lastMove = sm;
       this.lastMoveTs = now;
     }
     this.seqmoves = [];
 
-    if (triggeredBomb && now >= this.nextBombAvailable) {
-      this.nextBombAvailable = now + this.bombCooldownMs;
-      return [new ServerBomb(this.x, this.y, now + BOMB_FUSE_TIME_MS)];
-    }
-    return [];
+    return placedBombs;
   }
 
   serialize(): SequencedPlayer {

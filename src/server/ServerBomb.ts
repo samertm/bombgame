@@ -14,16 +14,21 @@ export default class ServerBomb {
   explodeTime: number;
   exploded: boolean;
   size: number;
+  parentPlayerId: string;
 
-  constructor(x: number, y: number, explodeTime: number) {
+  constructor(x: number, y: number, explodeTime: number, size: number, parentPlayerId: string) {
     this.id = ''+Math.trunc(Math.random()*10000000000000000);
     const coord = tileToCoord(coordToTile({x: x, y: y}));
     this.x = coord.x;
     this.y = coord.y;
     this.explodeTime = explodeTime;
+    this.size = size;
+    this.parentPlayerId = parentPlayerId;
     this.exploded = false;
+  }
 
-    this.size = 7;
+  collidesWithBomb(bomb: Bomb) {
+    return rectangleCollision(coordToRectangle(this), coordToRectangle(bomb));
   }
 
   update(now: number, players: {[id: string]: ServerPlayer}, bombs: ServerBomb[], blocks: (ServerBlock | undefined)[][]): ServerExplosion | undefined {
@@ -34,6 +39,10 @@ export default class ServerBomb {
       return;
     }
     this.exploded = true;
+    const parent = players[this.parentPlayerId];
+    if (parent) {
+      parent.decrementBombsPlaced();
+    }
     const tilesExploded: Tile[] = [];
 
     const seen: {[tileKey: string]: boolean} = {};
