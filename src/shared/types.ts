@@ -35,6 +35,7 @@ export interface Bomb {
 
 export interface Player {
   id: string;
+  username: string;
   x: number;
   y: number;
 }
@@ -73,9 +74,13 @@ export interface ClientState extends State {
   debugServerMe?: SequencedPlayer;
 }
 
+export type gameMode = 'waiting' | 'playing';
+
 export interface Update extends State {
   t: number;
   tickRate: number;
+  waitingMessage?: string;
+  mode: gameMode;
 }
 
 export interface Tile {

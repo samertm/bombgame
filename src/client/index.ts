@@ -14,6 +14,18 @@ import './css/main.css';
 const playMenu = document.getElementById('play-menu')!;
 const playButton = document.getElementById('play-button')!;
 const usernameInput = document.getElementById('username-input')! as HTMLInputElement;
+const generalModal = document.getElementById('general-modal')!;
+
+function displayOnGeneralModal(text: string) {
+  generalModal.classList.remove('hidden');
+  if (generalModal.innerText != text) {
+    generalModal.innerText = text;
+  }
+}
+
+function hideGeneralModal() {
+  generalModal.classList.add('hidden');
+}
 
 
 class Game {
@@ -21,10 +33,11 @@ class Game {
   receivedUpdates: Update[];
   lastUpdateTime: number;
   socket: typeof Socket | undefined;
-  mode: 'entermenu' | 'menu' | 'entergame' | 'game';
+  mode: 'entermenu' | 'menu' | 'enterwait' | 'wait' | 'entergame' | 'game';
 
   delta: number;
   debugClientSequences: {[sequence: number]: number};
+  lastGeneralMessage?: string;
 
   constructor() {
     this.receivedUpdates = [];
@@ -57,9 +70,13 @@ class Game {
     if (this.mode === 'entermenu') {
       stopCapturingInputAndWipe();
       playMenu.classList.remove('hidden');
+      hideGeneralModal();
       usernameInput.focus();
       playButton.onclick = () => {
-        this.mode = 'entergame';
+        if (usernameInput.value === "") {
+          return;
+        }
+        this.mode = 'enterwait';
       };
       this.state = new State();
       this.mode = 'menu';
@@ -67,17 +84,31 @@ class Game {
     if (this.mode === 'menu') {
       // TODO
     }
+    if (this.mode === 'enterwait') {
+      this.receivedUpdates = [];
+      sendJoinGame(socket, usernameInput.value);
+      playMenu.classList.add('hidden');
+      this.mode = 'wait';
+    }
+    if (this.mode === 'wait') {
+      // TODO
+      if (this.receivedUpdates.length !== 0) {
+        const lastUpdate = this.receivedUpdates[this.receivedUpdates.length-1];
+        if (lastUpdate.mode !== 'waiting') {
+          this.mode = 'entergame';
+        }
+      }
+    }
     if (this.mode === 'entergame') {
       this.state = new State();
       this.receivedUpdates = [];
-      sendJoinGame(socket, usernameInput.value);
       playMenu.classList.add('hidden');
       startCapturingInput();
       this.mode = 'game';
       this.delta = 0;
     }
 
-    // this.mode is either 'menu' or 'game' at this point.
+    // this.mode is 'menu', 'wait', or 'game' at this point.
 
     if (this.lastUpdateTime === undefined) {
       this.lastUpdateTime = ts;
@@ -119,6 +150,16 @@ class Game {
         }
       }
       state.processGameUpdates(this.receivedUpdates, ts);
+      if (this.mode !== 'menu') {
+        if (this.lastGeneralMessage !== lastUpdate.waitingMessage) {
+          this.lastGeneralMessage = lastUpdate.waitingMessage;
+          if (this.lastGeneralMessage === undefined || this.lastGeneralMessage === "") {
+            hideGeneralModal();
+          } else {
+            displayOnGeneralModal(this.lastGeneralMessage);
+          }
+        }
+      }
       this.receivedUpdates = [];
     }
 

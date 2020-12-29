@@ -73,6 +73,15 @@ button:focus {
   outline: none;
 }
 
+#general-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translateY(-50%) translateX(-50%);
+    align-items: center;
+    text-align: center;
+}
+
 #leaderboard {
   position: fixed;
   top: 10px;

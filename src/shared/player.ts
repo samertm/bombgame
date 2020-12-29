@@ -10,6 +10,7 @@ import {
 
 export function copySequencedPlayer(p: SequencedPlayer): SequencedPlayer {
   return {
+    username: p.username,
     sequence: p.sequence,
     id: p.id,
     x: p.x,

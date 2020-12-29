@@ -137,6 +137,7 @@ export default class ServerPlayer {
   serialize(): SequencedPlayer {
     const seqnum = (this.lastMove) ? this.lastMove.sequence : 0;
     return {
+      username: this.username,
       sequence: seqnum,
       id: this.id,
       x: this.x,

@@ -122,6 +122,7 @@ export default class State {
     // Update the player location.
     // Copy the latest server update so we can modify the player.
     let player: SequencedPlayer = {
+      username: latestServerUpdate.me.username,
       sequence: latestServerUpdate.me.sequence,
       id: latestServerUpdate.me.id,
       x: latestServerUpdate.me.x,
@@ -193,6 +194,7 @@ export default class State {
 function interpolateMe(baseMe: SequencedPlayer, nextCoord: Coord, ratio: number): SequencedPlayer {
   const p = interpolatePlayer(baseMe, nextCoord, ratio);
   return {
+    username: baseMe.username,
     sequence: baseMe.sequence,
     id: p.id,
     x: p.x,
@@ -220,6 +222,7 @@ function interpolatePlayer(basePlayer: Player, nextPlayer: Coord | undefined, ra
 
   const { x, y } = interpolateCoord(basePlayer, nextPlayer, ratio);
   return {
+    username: basePlayer.username,
     id: basePlayer.id,
     x: x,
     y: y,

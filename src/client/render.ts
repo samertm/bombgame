@@ -147,6 +147,13 @@ function renderPlayer(camera: Coord, player: Player, debug?: boolean) {
     PLAYER_RADIUS * 2,
   );
   context.restore();
+
+  context.font = "14px Helvetica";
+  context.fillStyle = 'black';
+  context.fillText(
+    player.username,
+    canvasX - PLAYER_RADIUS,
+    canvasY - PLAYER_RADIUS - 8);
 }
 
 function renderBomb(camera: Coord, bomb: Bomb) {
