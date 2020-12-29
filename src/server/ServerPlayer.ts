@@ -1,3 +1,4 @@
+import { Socket } from 'socket.io';
 import { SequencedMove, SequencedPlayer, Block } from '../shared/types';
 import { BOMB_FUSE_TIME_MS, TILE_SIZE, PLAYER_SPEED } from '../shared/constants';
 import { movePlayer } from '../shared/player';
@@ -16,6 +17,7 @@ function bombCooldownMs(): number {
 
 
 export default class ServerPlayer {
+  socket: Socket;
   id: string;
   username: string;
   x: number;
@@ -30,7 +32,8 @@ export default class ServerPlayer {
 
   bombCooldownOverAt: number;
 
-  constructor(id: string, username: string, x: number, y: number) {
+  constructor(socket: Socket, id: string, username: string, x: number, y: number) {
+    this.socket = socket;
     this.id = id;
     this.username = username;
     this.x = x;

@@ -61,11 +61,14 @@ export interface Powerup extends Coord {
   destroyed: boolean;
 }
 
+export type BlockRow = (Block | undefined)[];
+export type BlockGrid = BlockRow[];
+
 export interface State {
   me?: SequencedPlayer;
   others: Player[];
   bombs: Bomb[];
-  blocks: (Block | undefined)[][];
+  blocks: BlockGrid;
   explosions: Explosion[];
   powerups: Powerup[];
 }
@@ -74,13 +77,10 @@ export interface ClientState extends State {
   debugServerMe?: SequencedPlayer;
 }
 
-export type gameMode = 'waiting' | 'playing';
-
 export interface Update extends State {
   t: number;
   tickRate: number;
   waitingMessage?: string;
-  mode: gameMode;
 }
 
 export interface Tile {

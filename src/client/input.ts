@@ -58,7 +58,7 @@ function keyHandler(event: KeyboardEvent, enable: boolean) {
   }
 }
 
-export function getAndWipeMoveBuffer() {
+export function getAndWipeMoveBuffer(): SequencedMove[] {
   if (moveBuffer.length === 0 && lastSequencedMove && !isMoveZero(lastSequencedMove.move)) {
     // Use the last move if it's non-zero and the buffer is empty.
     // This is needed for the client-side prediction of the player
